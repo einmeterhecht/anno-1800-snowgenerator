@@ -102,12 +102,16 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>external/rapidxml/;external/glfw-3.3.6/include/;external/glew-2.2.0/include/;external/DirectXTex/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>external/glfw-3.3.6/lib-vc2022/;external/glew-2.2.0/lib/Release/x64/;external/DirectXTex/;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>./external/glfw-3.3.6/lib-vc2022/glfw3.lib;./external/glew-2.2.0/lib/Release/x64/glew32s.lib;./external/DirectXTex/DirectXTex.lib;opengl32.lib;d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -116,18 +120,28 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;GLEW_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>external/rapidxml/;external/glfw-3.3.6/include/;external/glew-2.2.0/include/;external/DirectXTex/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>external/glfw-3.3.6/lib-vc2022/;external/glew-2.2.0/lib/Release/x64/;external/DirectXTex/;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>./external/glfw-3.3.6/lib-vc2022/glfw3.lib;./external/glew-2.2.0/lib/Release/x64/glew32s.lib;./external/DirectXTex/DirectXTex.lib;opengl32.lib;d3d11.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="snowgenerator.cpp" />
+    <ClCompile Include="src\CfgFile.cpp" />
+    <ClCompile Include="src\dds2gl.cpp" />
+    <ClCompile Include="src\filelist.cpp" />
+    <ClCompile Include="src\gl_stuff.cpp" />
+    <ClCompile Include="src\rdm2gl.cpp" />
+    <ClCompile Include="src\shaders.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
