@@ -2,8 +2,8 @@
 
 #include <iostream>
 #include <fstream>
-#include<string>
-#include<filesystem>
+#include <string>
+#include <filesystem>
 
 #include <d3d11.h>
 #include <wrl/client.h>

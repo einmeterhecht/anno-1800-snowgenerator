@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <iostream>
 
-#define BLACKLIST_SIZE 0//33
+#define BLACKLIST_SIZE 33
 const inline wchar_t* blacklist[] = {
 	L"colony", // Filters New World, Arctic, Enbesa
 	L"south_america",
@@ -45,21 +45,21 @@ const inline wchar_t* blacklist[] = {
 	L"[Winter]", // Don't generate snow twice (CFGs for test purposes in the output directory)
 };
 
-#define TEXTURE_BLACKLIST_SIZE 0
-const inline char* texture_blacklist[] = {
-	"atlas", //"data/graphics/props/shared_textures/prop_atlas_4k",//
-	"quay_system",
-	//"data/graphics/buildings/3rd_party/3rd_party_06/maps/3rd_party_06_",
-	//"data/graphics/ui/3d_objects/world_map/maps/afric",//(sic)
-    //"data/graphics/ui/3d_objects/world_map/maps/c",
-	//"data/graphics/ui/3d_objects/world_map/maps/polar",
-	//"data/graphics/ui/3d_objects/world_map/maps/kontor_colony",
-	//"data/graphics/ui/3d_objects/world_map/maps/south_america",
-	//"data/graphics/ui/3d_objects/world_map/maps/world",
-	"bridges"
+#define TEXTURE_BLACKLIST_SIZE 4
+const inline wchar_t* texture_blacklist[] = {
+	L"atlas", //L"data/graphics/props/shared_textures/prop_atlas_4k",//
+	L"quay_system",
+	L"data/graphics/buildings/3rd_party/3rd_party_06/maps/3rd_party_06_", //Old Nate
+	//L"data/graphics/ui/3d_objects/world_map/maps/afric",//(sic)
+    //L"data/graphics/ui/3d_objects/world_map/maps/c",
+	//L"data/graphics/ui/3d_objects/world_map/maps/polar",
+	//L"data/graphics/ui/3d_objects/world_map/maps/kontor_colony",
+	//L"data/graphics/ui/3d_objects/world_map/maps/south_america",
+	//L"data/graphics/ui/3d_objects/world_map/maps/world",
+	L"bridges"
 };
 
-#define WHITELIST_SIZE 0
+#define WHITELIST_SIZE 4
 const inline wchar_t* whitelist[] = {
 	//L"data/graphics/ui/3d_objects/world_map/",
 	L"data/dlc03/graphics/buildings/special/electricity_02", // Gas Power Plant
@@ -72,4 +72,5 @@ bool ends_in_cfg(std::wstring path);
 bool is_old_world(std::wstring path);
 bool is_old_world_cfg(std::wstring path);
 bool is_forbidden_texture(std::string path);
+bool is_forbidden_texture(std::wstring path);
 void get_file_list(std::string directory_path, std::vector<std::wstring>* target, bool (*check_function)(std::wstring));

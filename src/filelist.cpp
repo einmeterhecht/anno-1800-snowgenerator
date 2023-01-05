@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <iostream>
 #include <algorithm>
+#include "dds2gl.h"
 
 bool ends_in_cfg(std::wstring path) {
 	return path.ends_with(L".cfg");
@@ -33,7 +34,11 @@ bool is_old_world(std::wstring path)
 	}
 }
 
-bool is_forbidden_texture(std::string path)
+bool is_forbidden_texture(std::string path) {
+    return is_forbidden_texture(string_to_16bit_unicode_wstring(path));
+}
+
+bool is_forbidden_texture(std::wstring path)
 {
 	std::replace(path.begin(), path.end(), '\\', '/');
 	int i;
