@@ -52,17 +52,71 @@ What this program does:
 #include "src/snow_exception.h"
 
 namespace fs = std::filesystem;
+using namespace std;
 
-int main()
+int main(int argc, char *argv[])
 {
-    std::cout << "Hello World!" << std::endl;
     fs::path containing_dir = fs::path(__argv[0]).parent_path();
-    fs::path out_path = fs::path(__argv[0]).parent_path().append("[Winter] Snow/");
-    std::vector<std::wstring> target;
-    get_file_list(containing_dir.string(), &target, &is_old_world_cfg);
+	
+	string dir_to_parse = containing_dir.string();
+	fs::path out_path = containing_dir.append("[Winter] Snow/");
+	
+	boolean has_extracted_maindata_path = false; // Was a fallback path with the extracted maindata passed as command line argument?
+    fs::path extracted_maindata_path;
+
+    boolean disable_filenamefilters = false;
+    boolean atlas_mode = false;
+    boolean save_png = false;
+    boolean save_dds = true;
+
+    cout << "Command line arguments passed:" << endl;
+	string last_word = "";
+    for (int i=1; i<argc; i++){
+		cout << i << ": " << argv[i] << endl;
+        string arg = string(argv[i]);
+		if ((arg == "--no_ff") || (arg == "--no_filename_filters")){
+			disable_filenamefilters = true;
+		} else if ((arg == "--no_ff") || (arg == "--no_filename_filters")){
+			disable_filenamefilters = true;
+		}
+        else if ((arg == "--png") || (arg == "--save_png")) {
+            save_png = true;
+        }
+        else if (arg == "--no_dds") {
+            save_dds = false;
+        }
+        else if (arg == "--only_png") {
+            save_png = true;
+            save_dds = false;
+        }
+        else if ((arg == "-o") || (arg == "-out_path") || (arg == "-output")){
+            last_word = "-o";
+		} else if ((arg == "-i") || (arg == "-in_path") || (arg == "-input")){
+            last_word = "-i";
+		} else if ((arg == "-d") || (arg == "-data_path") || (arg == "-data")){
+            last_word = "-d";
+		} else{
+			if (last_word == "-o") out_path=fs::path(argv[i]);
+            else if (last_word == "-i") dir_to_parse = argv[i];
+            else if (last_word == "-d"){
+                has_extracted_maindata_path = true;
+                extracted_maindata_path = fs::path(argv[i]);
+            }
+		}
+	}
+
+    cout << "-o " << out_path.string() << endl;
+    cout << "-i " << dir_to_parse << endl;
+    if (has_extracted_maindata_path) cout << "-d " << extracted_maindata_path.string() << endl;
+    if (disable_filenamefilters) cout << "--no_ff" << endl;
+    if (atlas_mode) cout << "--atlas_mode" << endl;
+
+
+    vector<wstring> target;
+    get_file_list(dir_to_parse, &target, &is_old_world_cfg);
 
     GlStuff context_gl = GlStuff();
-    while (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while initializing" << std::endl;
+    while (glGetError() != GL_NO_ERROR) cout << "GL ERROR while initializing" << endl;
     GLuint snow_program = compile_shaders_to_program(
         texcoord_as_positon_2_vertexshader_code, snow_fragmentshader_code);
     GLuint copy_texture_program = compile_shaders_to_program(
@@ -72,32 +126,32 @@ int main()
     GLuint clear_snowmap_program = compile_shaders_to_program(
         texcoord_as_position_vertexshader_code, clear_snowmap_fragmentshader_code);
 
-    while (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while compiling shaders" << std::endl;
+    while (glGetError() != GL_NO_ERROR) cout << "GL ERROR while compiling shaders" << endl;
 
     context_gl.load_square_vertexbuffer();
     context_gl.load_noise_texture(4096);
-    if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while loading shaders & data" << std::endl;
+    if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while loading shaders & data" << endl;
 
-    std::cout << "Found " << target.size() << " files: " << std::endl;
+    cout << "Found " << target.size() << " files: " << endl;
     for (int cfg_index = 0; cfg_index < target.size(); cfg_index++) {
-        std::wstring cfg_path = target.at(cfg_index);
-        std::wcout << cfg_path << std::endl;
+        wstring cfg_path = target.at(cfg_index);
+        wcout << cfg_path << endl;
     }
 
-    std::vector<std::wstring> error_files;
+    vector<wstring> error_files;
 
     for (int cfg_index = 0; cfg_index < target.size(); cfg_index++) {
-        std::wstring cfg_path = target.at(cfg_index);
-        std::wcout << L"\n\n\nCfg file " << cfg_index + 1 << L" / " << target.size() << std::endl;
-        std::wcout << cfg_path << std::endl;
+        wstring cfg_path = target.at(cfg_index);
+        wcout << L"\n\n\nCfg file " << cfg_index + 1 << L" / " << target.size() << endl;
+        wcout << cfg_path << endl;
 
         try {
             CfgFile cfg_file = CfgFile(cfg_path, out_path);
             cfg_file.load_models_and_textures(&cfg_file.loaded_textures);
-            if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while loading textures" << std::endl;
+            if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while loading textures" << endl;
 
-            std::map<std::wstring, GLuint> rendered_snowmaps{};
-            std::map<std::wstring, GLuint> framebuffer_ids{};
+            map<wstring, GLuint> rendered_snowmaps{};
+            map<wstring, GLuint> framebuffer_ids{};
 
             for (int i = 0; i < cfg_file.cfg_models.size(); i++) {
                 HardwareRdm& mesh = cfg_file.cfg_models[i].mesh;
@@ -109,7 +163,7 @@ int main()
 
                     int width, height;
 
-                    std::wstring texture_out_path = cfg_material.out_texture_paths[0];
+                    wstring texture_out_path = cfg_material.out_texture_paths[0];
 
                     // GLuint old_render_target_texture = render_target_texture;
                     if (!rendered_snowmaps.contains(texture_out_path)) {
@@ -132,7 +186,7 @@ int main()
                     }
                     glViewport(0, 0, width, height);
 
-                    //std::cout << "MATERIAL" << std::endl;
+                    //cout << "MATERIAL" << endl;
 
                     // Render a snowmap to rendered_snowmaps[texture_out_paths]
                     /*GLint old_framebuffer;
@@ -157,7 +211,7 @@ int main()
                     );
                     context_gl.unbind_vertexformat(cfg_material.vertex_format);
 
-                    if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while rendering" << std::endl;
+                    if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while rendering" << endl;
 
                     // Render snowmap to screen so that the user has something to look at
                     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -182,7 +236,7 @@ int main()
 
                 }
             }
-            std::set<GLuint> saved_textures = std::set<GLuint>();
+            set<GLuint> saved_textures = set<GLuint>();
             for (int i = 0; i < cfg_file.cfg_models.size(); i++) {
                 for (int j = 0; j < cfg_file.cfg_models[i].cfg_materials.size(); j++) {
                     CfgMaterial& cfg_material = cfg_file.cfg_models[i].cfg_materials[j];
@@ -225,17 +279,27 @@ int main()
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)0);
                     context_gl.unbind_square_buffers();
 
-                    if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while combining original texture and snowmap" << std::endl;
+                    if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while combining original texture and snowmap" << endl;
                     for (int k = 0; k < texture_types_count; k++) {
                         if (k == 1) saved_textures.insert(cfg_material.texture_ids[k]); // Do not save normalmaps
-                        if (!(saved_textures.contains(cfg_material.texture_ids[k]) || cfg_material.out_texture_paths[k].find(L"default_model_") != std::wstring::npos)) {
-                            gl_texture_to_dds_mipmaps(snowed_textures[k], cfg_material.out_texture_paths[k], cfg_material.mipmap_count[k]);
-                            saved_textures.insert(cfg_material.texture_ids[k]);
+                        if (saved_textures.contains(cfg_material.texture_ids[k])){
+                            // wcout << L"Do not safe texture twice" << endl;
+                        } else if (cfg_material.out_texture_paths[k].find(L"default_model_") != wstring::npos) {
+                            // cout << "Do not save the default texture " << cfg_constants::texture_names[k];
                         }
-                        /*std::cout << "Do not save texture " << cfg_constants::texture_names[k];
-                        std::wcout << L" " << cfg_material.out_texture_paths[k] << std::endl;*/
+                        else{
+                            if (is_forbidden_texture(cfg_material.out_texture_paths[k])){
+                                wcout << L"Save blacklisted texture " << cfg_material.out_texture_paths[k];
+                            }
+                            if (save_png) gl_texture_to_png_file(snowed_textures[k], cfg_material.out_texture_paths[k] + L".png");
+                            if (save_dds) gl_texture_to_dds_mipmaps(snowed_textures[k], cfg_material.out_texture_paths[k], cfg_material.mipmap_count[k]);
+                            saved_textures.insert(cfg_material.texture_ids[k]);
+
+                        }
+                        /*cout << "Do not save texture " << cfg_constants::texture_names[k];
+                        wcout << L" " << cfg_material.out_texture_paths[k] << endl;*/
                     }
-                    if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while saving texture" << std::endl;
+                    if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while saving texture" << endl;
                     glDeleteTextures(texture_types_count, snowed_textures);
                     glDeleteFramebuffers(1, &framebuffer_id);
                 }
@@ -246,35 +310,35 @@ int main()
             }
         }
         catch (snow_exception exception) {
-            std::wcout << L"Error processing file " << cfg_path << std::endl;
+            wcout << L"Error processing file " << cfg_path << endl;
             error_files.push_back(cfg_path);
-            std::cout << "Move on to next file" << std::endl;
+            cout << "Move on to next file" << endl;
         }
         catch (rapidxml::parse_error exception) {
-            std::wcout << L"Damaged cfg file " << cfg_path << std::endl;
+            wcout << L"Damaged cfg file " << cfg_path << endl;
             error_files.push_back(cfg_path);
-            std::cout << "Move on to next file" << std::endl;
+            cout << "Move on to next file" << endl;
         }/*
-        catch (std::exception exception) {
-            std::wcout << L"Uncaught exception in cfg file " << cfg_path << std::endl;
+        catch (exception exception) {
+            wcout << L"Uncaught exception in cfg file " << cfg_path << endl;
             error_files.push_back(cfg_path);
-            std::cout << "Move on to next file" << std::endl;
+            cout << "Move on to next file" << endl;
         }*/
     }
-    std::cout << "Done. "
+    cout << "Done. "
         << target.size() << " files processed, "
-        << target.size() - error_files.size() << " successful." << std::endl;
-    if (error_files.size() == 0) std::cout << "No errors" << std::endl;
+        << target.size() - error_files.size() << " successful." << endl;
+    if (error_files.size() == 0) cout << "No errors" << endl;
     else {
-        std::cout << "ERRORS in these " << error_files.size() << " files:" << std::endl;
-        for (std::wstring error_path : error_files) {
-            std::wcout << error_path << std::endl;
+        cout << "ERRORS in these " << error_files.size() << " files:" << endl;
+        for (wstring error_path : error_files) {
+            wcout << error_path << endl;
         }
     }
     context_gl.cleanup();
     glfwTerminate();
     // Let the user press enter to close window
     char* _ = new char[2];
-    std::cin.getline(_, 2);
+    cin.getline(_, 2);
     delete[] _;
 }

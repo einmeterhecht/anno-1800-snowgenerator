@@ -161,7 +161,10 @@ CfgMaterial::CfgMaterial(rapidxml::xml_node<>* input_node, std::wstring data_pat
 				n++;
 			}
 		}
-		if (is_forbidden_texture(rel_texture_paths[i])) rel_texture_paths[i] = cfg_constants::default_textures[i];
+		if (is_forbidden_texture(rel_texture_paths[i])){
+			std::cout << "Use default instead of blacklisted texture " << rel_texture_paths[i] << std::endl;
+			rel_texture_paths[i] = cfg_constants::default_textures[i];
+		}
 
 		std::replace(rel_texture_paths[i].begin(), rel_texture_paths[i].end(), '/', '\\');
 		if (rel_texture_paths[i].ends_with(".psd") || rel_texture_paths[i].ends_with(".png")) {
