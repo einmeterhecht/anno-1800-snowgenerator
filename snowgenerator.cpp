@@ -50,70 +50,22 @@ What this program does:
 #include "src/shaders.h"
 #include "src/dds2gl.h"
 #include "src/snow_exception.h"
+#include "src/cli_options.h"
 
 namespace fs = std::filesystem;
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-    fs::path containing_dir = fs::path(__argv[0]).parent_path();
-	
-	string dir_to_parse = containing_dir.string();
-	fs::path out_path = containing_dir.append("[Winter] Snow/");
-	
-	boolean has_extracted_maindata_path = false; // Was a fallback path with the extracted maindata passed as command line argument?
-    fs::path extracted_maindata_path;
+    CliOptions cli_options = CliOptions(argc, argv, fs::path(__argv[0]).parent_path());
 
-    boolean disable_filenamefilters = false;
-    boolean atlas_mode = false;
-    boolean save_png = false;
-    boolean save_dds = true;
-
-    cout << "Command line arguments passed:" << endl;
-	string last_word = "";
-    for (int i=1; i<argc; i++){
-		cout << i << ": " << argv[i] << endl;
-        string arg = string(argv[i]);
-		if ((arg == "--no_ff") || (arg == "--no_filename_filters")){
-			disable_filenamefilters = true;
-		} else if ((arg == "--no_ff") || (arg == "--no_filename_filters")){
-			disable_filenamefilters = true;
-		}
-        else if ((arg == "--png") || (arg == "--save_png")) {
-            save_png = true;
-        }
-        else if (arg == "--no_dds") {
-            save_dds = false;
-        }
-        else if (arg == "--only_png") {
-            save_png = true;
-            save_dds = false;
-        }
-        else if ((arg == "-o") || (arg == "-out_path") || (arg == "-output")){
-            last_word = "-o";
-		} else if ((arg == "-i") || (arg == "-in_path") || (arg == "-input")){
-            last_word = "-i";
-		} else if ((arg == "-d") || (arg == "-data_path") || (arg == "-data")){
-            last_word = "-d";
-		} else{
-			if (last_word == "-o") out_path=fs::path(argv[i]);
-            else if (last_word == "-i") dir_to_parse = argv[i];
-            else if (last_word == "-d"){
-                has_extracted_maindata_path = true;
-                extracted_maindata_path = fs::path(argv[i]);
-            }
-		}
-	}
-
-    cout << "-o " << out_path.string() << endl;
-    cout << "-i " << dir_to_parse << endl;
-    if (has_extracted_maindata_path) cout << "-d " << extracted_maindata_path.string() << endl;
-    if (disable_filenamefilters) cout << "--no_ff" << endl;
-    if (atlas_mode) cout << "--atlas_mode" << endl;
-
-
-    vector<wstring> target;
-    get_file_list(dir_to_parse, &target, &is_old_world_cfg);
+    vector<wstring> target_files;
+    if (cli_options.disable_filenamefilters){
+        get_file_list(cli_options.dir_to_parse, &target_files, &ends_in_cfg);
+    }
+    else {
+        get_file_list(cli_options.dir_to_parse, &target_files, &is_old_world_cfg);
+    }
 
     GlStuff context_gl = GlStuff();
     while (glGetError() != GL_NO_ERROR) cout << "GL ERROR while initializing" << endl;
@@ -132,21 +84,21 @@ int main(int argc, char *argv[])
     context_gl.load_noise_texture(4096);
     if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while loading shaders & data" << endl;
 
-    cout << "Found " << target.size() << " files: " << endl;
-    for (int cfg_index = 0; cfg_index < target.size(); cfg_index++) {
-        wstring cfg_path = target.at(cfg_index);
+    cout << "Found " << target_files.size() << " files: " << endl;
+    for (int cfg_index = 0; cfg_index < target_files.size(); cfg_index++) {
+        wstring cfg_path = target_files.at(cfg_index);
         wcout << cfg_path << endl;
     }
 
     vector<wstring> error_files;
 
-    for (int cfg_index = 0; cfg_index < target.size(); cfg_index++) {
-        wstring cfg_path = target.at(cfg_index);
-        wcout << L"\n\n\nCfg file " << cfg_index + 1 << L" / " << target.size() << endl;
+    for (int cfg_index = 0; cfg_index < target_files.size(); cfg_index++) {
+        wstring cfg_path = target_files.at(cfg_index);
+        wcout << L"\n\n\nCfg file " << cfg_index + 1 << L" / " << target_files.size() << endl;
         wcout << cfg_path << endl;
 
         try {
-            CfgFile cfg_file = CfgFile(cfg_path, out_path);
+            CfgFile cfg_file = CfgFile(cfg_path, cli_options.out_path, cli_options.extracted_maindata_path.wstring(), cli_options.disable_filenamefilters);
             cfg_file.load_models_and_textures(&cfg_file.loaded_textures);
             if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while loading textures" << endl;
 
@@ -291,8 +243,8 @@ int main(int argc, char *argv[])
                             if (is_forbidden_texture(cfg_material.out_texture_paths[k])){
                                 wcout << L"Save blacklisted texture " << cfg_material.out_texture_paths[k];
                             }
-                            if (save_png) gl_texture_to_png_file(snowed_textures[k], cfg_material.out_texture_paths[k] + L".png");
-                            if (save_dds) gl_texture_to_dds_mipmaps(snowed_textures[k], cfg_material.out_texture_paths[k], cfg_material.mipmap_count[k]);
+                            if (cli_options.save_png) gl_texture_to_png_file(snowed_textures[k], cfg_material.out_texture_paths[k] + L".png");
+                            if (cli_options.save_dds) gl_texture_to_dds_mipmaps(snowed_textures[k], cfg_material.out_texture_paths[k], cfg_material.mipmap_count[k]);
                             saved_textures.insert(cfg_material.texture_ids[k]);
 
                         }
@@ -326,8 +278,8 @@ int main(int argc, char *argv[])
         }*/
     }
     cout << "Done. "
-        << target.size() << " files processed, "
-        << target.size() - error_files.size() << " successful." << endl;
+        << target_files.size() << " files processed, "
+        << target_files.size() - error_files.size() << " successful." << endl;
     if (error_files.size() == 0) cout << "No errors" << endl;
     else {
         cout << "ERRORS in these " << error_files.size() << " files:" << endl;

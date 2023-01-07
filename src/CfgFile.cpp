@@ -19,11 +19,10 @@ std::wstring find_datapath(std::wstring a_filepath_containing_datapath) {
 }
 
 
-CfgFile::CfgFile(std::wstring input_filepath, std::wstring out_path) {
+CfgFile::CfgFile(std::wstring input_filepath, std::wstring out_path, std::wstring extracted_maindata_path, bool disable_filenamefilters) {
 		//std::wcout << L"Reading " << input_filepath << std::endl;
 
 		// Reading file to buffer copied from https://stackoverflow.com/a/29915752
-		// (Answer from ANjaNA licensed CC BY-SA 3.0)
 		std::ifstream xml_stream(input_filepath);
 		// get pointer to associated buffer object
 		std::filebuf* pbuf = xml_stream.rdbuf();

@@ -10,11 +10,11 @@ bool ends_in_cfg(std::wstring path) {
 	return path.ends_with(L".cfg");
 }
 
-void get_file_list(std::string directory_path, std::vector<std::wstring>* target, bool (*check_function)(std::wstring))
+void get_file_list(std::string directory_path, std::vector<std::wstring>* target_files, bool (*check_function)(std::wstring))
 {
 	for (const auto& entry : std::filesystem::recursive_directory_iterator(directory_path)) {
 		if ((*check_function)(entry.path().generic_wstring())) {
-			target->push_back(entry.path().generic_wstring());
+			target_files->push_back(entry.path().generic_wstring());
 		}
 	}
 }

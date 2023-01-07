@@ -64,7 +64,7 @@ public:
 class CfgFile
 {
 public:
-	CfgFile(std::wstring input_filepath, std::wstring out_path);
+	CfgFile(std::wstring input_filepath, std::wstring out_path, std::wstring extracted_maindata_path, bool disable_filenamefilters);
 	int load_models_and_textures(std::map<std::wstring, GLuint>* loaded_textures);
 
 	std::vector<CfgModel> cfg_models;
