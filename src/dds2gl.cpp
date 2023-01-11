@@ -147,8 +147,14 @@ GLuint dds_file_to_gl_texture(std::wstring dds_filepath) {
 }
 
 
-int gl_texture_to_png_file(GLuint texture_id, std::wstring filename)
+int gl_texture_to_png_file(GLuint texture_id, std::filesystem::path filename, boolean append_extension)
 {
+    if (append_extension){
+		if (!(filename.string().ends_with(".png") || filename.string().ends_with(".PNG"))){
+			filename = filename.concat(".png");
+		}
+	}
+
 	glBindTexture(GL_TEXTURE_2D, texture_id);
 
 	int width, height;
@@ -168,19 +174,19 @@ int gl_texture_to_png_file(GLuint texture_id, std::wstring filename)
 	image.rowPitch = image.width * 4;
 	image.slicePitch = pixel_count * 4;
 
-	std::filesystem::create_directories(std::filesystem::path(filename).parent_path());
+	std::filesystem::create_directories(filename.parent_path());
 	
 	long hr = DirectX::SaveToWICFile(image, DirectX::WIC_FLAGS_NONE, DirectX::GetWICCodec(DirectX::WIC_CODEC_PNG), filename.c_str());
 	delete[] image.pixels;
 
 	if (FAILED(hr)){
-		std::wcout << L"Could not save to \"" << filename << L"\"" << std::endl;
+		std::cout << "Could not save to \"" << filename.string() << "\"" << std::endl;
 		std::wcout << static_cast<unsigned int>(hr) << std::wstring(GetErrorDesc(hr)) << std::endl;
 		throw snow_exception("Texture saving failed");
 	    return 1;
 	}
 	else {
-		//std::cout << "Texture succeessfully saved!" << std::endl;
+		std::cout << "Texture successfully saved to " << filename.string() << std::endl;
 		return 0;
 	}
 }
@@ -219,10 +225,15 @@ Microsoft::WRL::ComPtr<ID3D11Device> get_d3d11_device() {
 	return device;
 }
 
-void gl_texture_to_dds_mipmaps(GLuint texture_id, std::wstring filename_until_mipmap_indication, uint8_t mipmap_count)
+void gl_texture_to_dds_mipmaps(GLuint texture_id, std::filesystem::path filename_until_mipmap_indication, size_t mipmap_count)
 {
 	// In case of errors: Do not throw an exception, but just return without saving the texture.
 	if (mipmap_count == 0) return;
+	std::cout << "Mipmap count: " << std::to_string(mipmap_count) << std::endl;
+
+	// Update the window from time to time (Otherwise it won't react for some seconds)
+	glfwPollEvents();
+
 	glBindTexture(GL_TEXTURE_2D, texture_id);
 
 	int width, height;
@@ -234,6 +245,8 @@ void gl_texture_to_dds_mipmaps(GLuint texture_id, std::wstring filename_until_mi
 	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_buffer);
 	if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while trying to get texture data" << std::endl;
 
+	if (mipmap_count == 1 && width >= 32 && height >= 32) mipmap_count = 4; // Generate mipmaps also if the original did not have them
+
 	DirectX::Image image{};
 	image.width = width;
 	image.height = height;
@@ -243,58 +256,68 @@ void gl_texture_to_dds_mipmaps(GLuint texture_id, std::wstring filename_until_mi
 	image.slicePitch = pixel_count * 4;
 
 	std::unique_ptr<DirectX::ScratchImage> mipmaps(new (std::nothrow) DirectX::ScratchImage);
-	long hr = DirectX::GenerateMipMaps(image, DirectX::TEX_FILTER_LINEAR, mipmap_count, *mipmaps);
+	long hr; // Stores error codes of DirectX operations
 
-	if (FAILED(hr)) {
-	    mipmaps->Release();
-	    delete[] image.pixels;
-		std::wcout << static_cast<unsigned int>(hr) << std::wstring(GetErrorDesc(hr)) << std::endl;
-		std::wcerr << L"WARNING: Could not generate mipmaps for " << filename_until_mipmap_indication << "0.dds" << std::endl;
-		std::cout << "This texture won't be saved." << std::endl;
+	if (mipmap_count == 1) {
+		mipmaps->InitializeFromImage(image);
 	}
 	else {
-	    // Get access to the graphics card for compressing the image.
-	    Microsoft::WRL::ComPtr<ID3D11Device> device = get_d3d11_device();
-		std::unique_ptr<DirectX::ScratchImage> compressed_mipmaps(new (std::nothrow) DirectX::ScratchImage);
-		hr = DirectX::Compress(
-			device.Get(),
-			mipmaps->GetImages(),
-			mipmaps->GetImageCount(),
-			mipmaps->GetMetadata(),
-			DXGI_FORMAT_BC7_UNORM,
-			DirectX::TEX_COMPRESS_DEFAULT,
-			1.0f,
-			*compressed_mipmaps);
-		mipmaps->Release();
-		delete[] image.pixels;
-		if (FAILED(hr)) {
-			compressed_mipmaps->Release();
-			std::wcout << static_cast<unsigned int>(hr) << std::wstring(GetErrorDesc(hr)) << std::endl;
-			std::wcerr << L"Could not compress to BC7_UNORM...\nTexture path: " << filename_until_mipmap_indication << "0.dds" << std::endl;
-			std::cout << "This texture won't be saved." << std::endl;
-		}
-		else {
-			std::filesystem::create_directories(std::filesystem::path(filename_until_mipmap_indication).parent_path());
-			for (uint8_t i = 0; i < mipmap_count; i++) {
-				long hr = DirectX::SaveToDDSFile(
-					*compressed_mipmaps->GetImage(i, 0, 0),
-					DirectX::DDS_FLAGS_ALLOW_LARGE_FILES,
-					(filename_until_mipmap_indication
-						+ std::wstring(1, (wchar_t)(i + 48))
-						+ std::wstring(L".dds")
-					).c_str());
+		hr = DirectX::GenerateMipMaps(image, DirectX::TEX_FILTER_LINEAR, mipmap_count, *mipmaps);
 
-				if (FAILED(hr)) {
-					std::wcout << L"WARNING: Could not save to \"" << filename_until_mipmap_indication << L"\"" << std::endl;
-					std::wcout << static_cast<unsigned int>(hr) << std::wstring(GetErrorDesc(hr)) << std::endl;
-				}
-				else {
-					std::wcout << L"Texture successfully saved to " << filename_until_mipmap_indication
-						+ std::wstring(1, (wchar_t)(i + 48))
-						+ std::wstring(L".dds") << std::endl;
-				}
-			}
-			compressed_mipmaps->Release();
+		if (FAILED(hr)) {
+			mipmaps->Release();
+			delete[] image.pixels;
+			std::wcout << static_cast<unsigned int>(hr) << std::wstring(GetErrorDesc(hr)) << std::endl;
+			std::cerr << "WARNING: Could not generate mipmaps for " << filename_until_mipmap_indication.string() << "0.dds" << std::endl;
+			std::cout << "This texture won't be saved." << std::endl;
+			return;
 		}
 	}
+
+	// Update the window from time to time (Otherwise it won't react for some seconds)
+	glfwPollEvents();
+
+	// Get access to the graphics card for compressing the image
+	Microsoft::WRL::ComPtr<ID3D11Device> device = get_d3d11_device();
+	std::unique_ptr<DirectX::ScratchImage> compressed_mipmaps(new (std::nothrow) DirectX::ScratchImage);
+	hr = DirectX::Compress(
+		device.Get(),
+		mipmaps->GetImages(),
+		mipmaps->GetImageCount(),
+		mipmaps->GetMetadata(),
+		DXGI_FORMAT_BC7_UNORM,
+		DirectX::TEX_COMPRESS_DEFAULT,
+		1.0f,
+		*compressed_mipmaps);
+	mipmaps->Release();
+	delete[] image.pixels;
+	if (FAILED(hr)) {
+		compressed_mipmaps->Release();
+		std::wcout << static_cast<unsigned int>(hr) << std::wstring(GetErrorDesc(hr)) << std::endl;
+		std::cerr << "Could not compress to BC7_UNORM...\nTexture path: " << filename_until_mipmap_indication << "0.dds" << std::endl;
+		std::cout << "This texture won't be saved." << std::endl;
+		return;
+	}
+	std::filesystem::create_directories(filename_until_mipmap_indication.parent_path());
+	for (size_t i = 0; i < mipmap_count; i++) {
+
+		// Update the window from time to time (Otherwise it won't react for some seconds)
+		glfwPollEvents();
+
+		std::filesystem::path full_out_path = std::filesystem::path(filename_until_mipmap_indication).concat(
+			std::to_string(i)).concat(".dds");
+		long hr = DirectX::SaveToDDSFile(
+			*compressed_mipmaps->GetImage(i, 0, 0),
+			DirectX::DDS_FLAGS_ALLOW_LARGE_FILES,
+			full_out_path.wstring().c_str());
+
+		if (FAILED(hr)) {
+			std::cout << "WARNING: Could not save to \"" << filename_until_mipmap_indication << "\"" << std::endl;
+			std::wcout << static_cast<unsigned int>(hr) << std::wstring(GetErrorDesc(hr)) << std::endl;
+		}
+		else {
+			std::cout << "Texture successfully saved to " << full_out_path.string() << std::endl;
+		}
+	}
+	compressed_mipmaps->Release();
 }

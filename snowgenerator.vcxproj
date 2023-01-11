@@ -124,6 +124,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>external/rapidxml/;external/glfw-3.3.6/include/;external/glew-2.2.0/include/;external/DirectXTex/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,17 +136,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="cli_options.cpp" />
     <ClCompile Include="snowgenerator.cpp" />
     <ClCompile Include="src\CfgFile.cpp" />
+    <ClCompile Include="src\cli_options.cpp" />
     <ClCompile Include="src\dds2gl.cpp" />
     <ClCompile Include="src\filelist.cpp" />
     <ClCompile Include="src\gl_stuff.cpp" />
+    <ClCompile Include="src\matrix2gl.cpp" />
     <ClCompile Include="src\rdm2gl.cpp" />
     <ClCompile Include="src\shaders.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cli_options.h" />
+    <ClInclude Include="src\CfgFile.h" />
+    <ClInclude Include="src\dds2gl.h" />
+    <ClInclude Include="src\filelist.h" />
+    <ClInclude Include="src\gl_stuff.h" />
+    <ClInclude Include="src\matrix2gl.h" />
+    <ClInclude Include="src\rdm2gl.h" />
+    <ClInclude Include="src\shadercode.h" />
+    <ClInclude Include="src\shaders.h" />
+    <ClInclude Include="src\snow_exception.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -155,3 +155,23 @@ void main(){
     normal_output   = norm_color;
     metallic_output = metallic_color; 
 })<shadercode>";
+
+
+const std::string simple_matrix_transform_vertexshader_code = R"<shadercode>(
+#version 330 core
+
+// Vertex Attributes
+layout(location = 0) in vec3 vertex_p;
+layout(location = 4) in vec2 vertex_t;
+
+// Transformation matrix
+uniform mat4 transformation_matrix;
+
+// Output data ; will be interpolated for each fragment.
+out vec2 out_t;
+
+void main(){
+	gl_Position =  transformation_matrix * vec4(vertex_p, 1.);
+    out_t = vertex_t;
+})<shadercode>";
+

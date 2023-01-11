@@ -1,18 +1,25 @@
 #include "cli_options.h"
 
+#include <filesystem>
+#include <string>
+#include <iostream>
+
+namespace fs = std::filesystem;
+using namespace std;
+
 CliOptions::CliOptions(int argc, char* argv[], fs::path containing_dir) {
-	string dir_to_parse = containing_dir.string();
-	fs::path out_path = containing_dir.append("[Winter] Snow/");
+    dir_to_parse = containing_dir;
+	out_path = fs::path(containing_dir).append("[Winter] Snow/");
 
-	bool has_extracted_maindata_path = false; // Was a fallback path with the extracted maindata passed as command line argument?
-	fs::path extracted_maindata_path;
+	has_extracted_maindata_path = false; // Was a fallback path with the extracted maindata passed as command line argument?
+	extracted_maindata_path;
 
-	bool disable_filenamefilters = false;
-	bool atlas_mode = false;
-    bool save_non_mod_textures = false;
+	disable_filenamefilters = false;
+	atlas_mode = false;
+    save_non_mod_textures = false;
 
-	bool save_png = false;
-	bool save_dds = true;
+	save_png = false;
+	save_dds = true;
 
     // cout << "Command line arguments passed:" << endl;
     string last_word = "";
@@ -48,7 +55,7 @@ CliOptions::CliOptions(int argc, char* argv[], fs::path containing_dir) {
             last_word = "-d";
         }
         else {
-            if (last_word == "-i") dir_to_parse = argv[i];
+            if (last_word == "-i") dir_to_parse = fs::path(argv[i]);
             else if (last_word == "-o") out_path = fs::path(argv[i]);
             else if (last_word == "-d") {
                 has_extracted_maindata_path = true;

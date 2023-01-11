@@ -1,9 +1,14 @@
+#pragma once
+
+#include <filesystem>
+#include <string>
+
 class CliOptions
 {
 public:
-    CliOptions(int argc, char* argv[], fs::path containing_dir);
+    CliOptions(int argc, char* argv[], std::filesystem::path containing_dir);
 
-    string dir_to_parse;
+    std::filesystem::path dir_to_parse;
     std::filesystem::path out_path;
 
     bool has_extracted_maindata_path = false; // Was a fallback path with the extracted maindata passed as command line argument?

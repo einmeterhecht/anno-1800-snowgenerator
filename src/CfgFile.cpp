@@ -5,21 +5,45 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 #include "dds2gl.h"
 #include "snow_exception.h"
 #include "filelist.h"
 #include "../external/rapidxml/rapidxml.hpp"
+
 using namespace rapidxml;
+namespace fs = std::filesystem;
 
-
-std::wstring find_datapath(std::wstring a_filepath_containing_datapath) {
-	size_t begin_index = std::min<size_t>(a_filepath_containing_datapath.rfind(L"\\data\\"), a_filepath_containing_datapath.rfind(L"/data/"));
-	return a_filepath_containing_datapath.substr(0, begin_index + 1);
+fs::path find_datapath(fs::path path_into_data) {
+	fs::path a_filepath_containing_datapath = path_into_data;
+	bool found_datapath = false;
+	while (a_filepath_containing_datapath.has_parent_path()) {
+		if (a_filepath_containing_datapath.filename() == "data") {
+			return a_filepath_containing_datapath.parent_path();
+		}
+		a_filepath_containing_datapath = a_filepath_containing_datapath.parent_path();
+	}
+	return path_into_data;
 }
 
+fs::path backward_to_forward_slashes(fs::path original) {
+	std::string target = original.string();
+	// https://stackoverflow.com/a/20412841
+	int n = 0;
+	while ((n = target.find("\\\\", n)) != std::string::npos) {
+		target.replace(n, 2, "/");
+		n ++;
+	}
+	n = 0;
+	while ((n = target.find("\\", n)) != std::string::npos) {
+		target.replace(n, 1, "/");
+		n++;
+	}
+	return fs::path(target);
+}
 
-CfgFile::CfgFile(std::wstring input_filepath, std::wstring out_path, std::wstring extracted_maindata_path, bool disable_filenamefilters) {
+CfgFile::CfgFile(std::filesystem::path input_filepath, CliOptions cli_options) {
 		//std::wcout << L"Reading " << input_filepath << std::endl;
 
 		// Reading file to buffer copied from https://stackoverflow.com/a/29915752
@@ -61,7 +85,7 @@ CfgFile::CfgFile(std::wstring input_filepath, std::wstring out_path, std::wstrin
 			{
 				//std::cout << "Found a model tag" << std::endl;
 				try {
-				    cfg_models.push_back(CfgModel(model_tag, find_datapath(input_filepath), out_path));
+				    cfg_models.push_back(CfgModel(model_tag, find_datapath(input_filepath), cli_options));
 				}
 				catch (snow_exception exception) {
 					std::cout << "Skip this Model, but process the rest of this cfg" << std::endl;
@@ -82,22 +106,17 @@ int CfgFile::load_models_and_textures(std::map<std::wstring, GLuint>* loaded_tex
 }
 
 
-CfgModel::CfgModel(rapidxml::xml_node<>* input_node, std::wstring data_path, std::wstring out_path) {
+CfgModel::CfgModel(rapidxml::xml_node<>* input_node, fs::path data_path, CliOptions cli_options) {
 	// std::cout << "FileName: " << input_node->first_node("FileName", 8)->value() << std::endl;
 
-	rdm_filename = data_path + string_to_16bit_unicode_wstring(input_node->first_node(cfg_constants::rdm_filename_in_cfg)->value());
+    std::string relative_path = std::string(input_node->first_node(cfg_constants::rdm_filename_in_cfg)->value());
+	rdm_filename = backward_to_forward_slashes(fs::path(data_path).append(relative_path));
 
-	// https://stackoverflow.com/a/20412841
-	int n = 0;
-	while ((n = rdm_filename.find(L"\\\\", n)) != std::string::npos) {
-		rdm_filename.replace(n, 2, L"/");
-		n ++;
-	}
 	//rdm_filename = rdm_filename.substr(0, rdm_filename.size() - 4) + L"_lod0.rdm";
 
 	// This one is mainly for data/dlc09/graphics/buildings/residence/residence_tier05_01/residence_tier05_01_02.cfg
 	// which has a Model with an empty <FileName></FileName> and no Models tag.
-	if (!rdm_filename.ends_with(L".rdm")) throw snow_exception("FileName is not an RDM file");
+	if (!rdm_filename.string().ends_with(".rdm")) throw snow_exception("FileName is not an RDM file");
 
 	xml_node<>* materials_tag = input_node->first_node("Materials", 9);
 	for (xml_node<>* material_tag = materials_tag->first_node();
@@ -105,7 +124,7 @@ CfgModel::CfgModel(rapidxml::xml_node<>* input_node, std::wstring data_path, std
 		material_tag = material_tag->next_sibling())
 	{
 		//std::cout << "Found a material tag" << std::endl;
-		cfg_materials.push_back(CfgMaterial(material_tag, data_path, out_path));
+		cfg_materials.push_back(CfgMaterial(material_tag, data_path, cli_options));
 	}
 }
 
@@ -118,11 +137,11 @@ void CfgModel::load_models_and_textures(std::map<std::wstring, GLuint>* loaded_t
 
 void CfgModel::load_model()
 {
-	mesh.load_rdm(std::filesystem::path(rdm_filename));
+	mesh.load_rdm(rdm_filename);
 }
 
 
-CfgMaterial::CfgMaterial(rapidxml::xml_node<>* input_node, std::wstring data_path, std::wstring out_path)
+CfgMaterial::CfgMaterial(rapidxml::xml_node<>* input_node, std::filesystem::path data_path, CliOptions cli_options)
 {
 	//std::cout << "\n\nReading a material of ConfigType " << input_node->first_node("ConfigType")->value() << std::endl;
 	vertex_format = input_node->first_node("VertexFormat")->value();
@@ -170,18 +189,20 @@ CfgMaterial::CfgMaterial(rapidxml::xml_node<>* input_node, std::wstring data_pat
 			rel_texture_paths[i] = rel_texture_paths[i].substr(0, rel_texture_paths[i].size() - 4) + "_0.dds";
 		}
 
-		abs_texture_paths[i] = data_path + string_to_16bit_unicode_wstring(rel_texture_paths[i]);
-		mipmap_count[i] = 0;
-		while (std::filesystem::exists(std::filesystem::path(
-			abs_texture_paths[i].substr(0, abs_texture_paths[i].size() - 5) // Path until mipmap indication
-			+ std::wstring(1, (wchar_t)(mipmap_count[i] + 48))              // The mipmap level as a wstring
-			+ std::wstring(L".dds")))){
-			mipmap_count[i]++;
-		}
-		
-		out_texture_paths[i] = out_path + string_to_16bit_unicode_wstring(rel_texture_paths[i]);
+		abs_texture_paths[i] = backward_to_forward_slashes(fs::path(data_path).append(rel_texture_paths[i]));
 
-		out_texture_paths[i] = out_texture_paths[i].substr(0, out_texture_paths[i].size() - 5);// + L".png";
+		// Count mipmaps
+		fs::path abs_texture_path_until_mipmap_indication = fs::path(data_path).append(
+			rel_texture_paths[i].substr(0, rel_texture_paths[i].size() - 5));
+		for (mipmap_count[i] = 0;
+			std::filesystem::exists(
+				fs::path(abs_texture_path_until_mipmap_indication).concat(
+					std::to_string(mipmap_count[i])).concat(  // The mipmap level as a string
+						".dds"));
+			mipmap_count[i]++);
+		
+		out_texture_paths[i] = backward_to_forward_slashes(fs::path(cli_options.out_path).append(
+			rel_texture_paths[i].substr(0, rel_texture_paths[i].size() - 5)));
 
 		//if (std::filesystem::exists(std::filesystem::path(out_texture_paths[i] + L"0.dds"))) abs_texture_paths[i] = out_texture_paths[i] + L"0.dds";
 

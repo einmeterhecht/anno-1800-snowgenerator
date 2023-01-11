@@ -94,7 +94,7 @@ int HardwareRdm::load_rdm(std::filesystem::path input_path)
 
     }
     else {
-        std::wcout << "Could not open " << input_path << std::endl;
+        std::cout << "Could not open " << input_path << std::endl;
         throw snow_exception("Could not open RDM file");
     }
     return 0;
