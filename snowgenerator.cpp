@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
     GLuint clear_snowmap_program = compile_shaders_to_program(
         texcoord_as_position_vertexshader_code, clear_snowmap_fragmentshader_code);
     GLuint render_isometric_program = compile_shaders_to_program(
-        simple_matrix_transform_vertexshader_code, copy_from_texture_fragmentshader_code);
+        simple_matrix_transform_vertexshader_code, simple_diff_fragmentshader_code);
 
     while (glGetError() != GL_NO_ERROR) cout << "GL ERROR while compiling shaders" << endl;
 
@@ -106,6 +106,8 @@ int main(int argc, char *argv[])
 
             map<string, GLuint> rendered_snowmaps{};
             map<string, GLuint> framebuffer_ids{};
+            
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             for (int i = 0; i < cfg_file.cfg_models.size(); i++) {
                 HardwareRdm& mesh = cfg_file.cfg_models[i].mesh;
@@ -139,7 +141,6 @@ int main(int argc, char *argv[])
                     else {
                         get_dimensions(rendered_snowmaps[texture_rel_path], &width, &height);
                     }
-                    glViewport(0, 0, width, height);
 
                     //cout << "MATERIA" << endl;
 
@@ -155,8 +156,7 @@ int main(int argc, char *argv[])
                     glViewport(0, 0, context_gl.window_w, context_gl.window_h);
 
                     glUseProgram(render_isometric_program);
-                    glClear(GL_COLOR_BUFFER_BIT);
-
+                    
                     GLuint texture_location_in_shader = glGetUniformLocation(render_isometric_program, "diff");
                     glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, cfg_material.texture_ids[0]);
@@ -165,14 +165,16 @@ int main(int argc, char *argv[])
                     mesh.bind_buffers();
                     context_gl.bind_vertexformat(cfg_material.vertex_format, mesh.vertices_size);
 
+                    glEnable(GL_DEPTH_TEST);
+                    glDepthFunc(GL_LESS);
                     GLuint matrix_location_in_shader = glGetUniformLocation(render_isometric_program, "transformation_matrix");
-                    load_isometric_matrix(matrix_location_in_shader, 0.1);
+                    load_isometric_matrix(matrix_location_in_shader, 0.4);
 
                     glDrawElements(
                         GL_TRIANGLES,
                         mesh.materials[j].size,
                         mesh.get_corner_datatype(),
-                        (void*)mesh.materials[j].offset
+                        (void*)(mesh.materials[j].offset*mesh.corner_size)
                     );
 
                     if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while rendering" << endl;
@@ -181,6 +183,7 @@ int main(int argc, char *argv[])
                     glfwPollEvents();
 
 
+                    glViewport(0, 0, width, height);
                     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_ids[texture_rel_path]); // Render to snowmap
 
                     // Render snowmap
@@ -193,7 +196,7 @@ int main(int argc, char *argv[])
                         GL_TRIANGLES,
                         mesh.materials[j].size,
                         mesh.get_corner_datatype(),
-                        (void*)mesh.materials[j].offset
+                        (void*)(mesh.materials[j].offset * mesh.corner_size)
                     );
                     context_gl.unbind_vertexformat(cfg_material.vertex_format);
 

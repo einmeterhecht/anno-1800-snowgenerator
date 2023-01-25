@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <iostream>
 
-#define BLACKLIST_SIZE 33
+#define BLACKLIST_SIZE 34
 const inline char* blacklist[] = {
 	"colony", // Filters New World, Arctic, Enbesa
 	"south_america",
@@ -42,6 +42,7 @@ const inline char* blacklist[] = {
 	"/campaign/burned_ruins/",
 	"/campaign/fisher_village/",
 	"/campaign/magistrate_shack/",
+	"/residence_tier03_01/", // Broken file
 	"[Winter]", // Don't generate snow twice (CFGs for test purposes in the output directory)
 };
 

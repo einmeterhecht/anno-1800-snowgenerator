@@ -29,16 +29,13 @@ CliOptions::CliOptions(int argc, char* argv[], fs::path containing_dir) {
         if ((arg == "--no_ff") || (arg == "--no_filename_filters")) {
             disable_filenamefilters = true;
         }
-        else if ((arg == "--no_ff") || (arg == "--no_filename_filters")) {
-            disable_filenamefilters = true;
-        }
         else if ((arg == "--png") || (arg == "--save_png")) {
             save_png = true;
         }
-        else if (arg == "--no_dds") {
+        else if ((arg == "--no_dds") || (arg == "--nodds")) {
             save_dds = false;
         }
-        else if (arg == "--only_png") {
+        else if ((arg == "--only_png") || (arg == "--onlypng")) {
             save_png = true;
             save_dds = false;
         }

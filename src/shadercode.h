@@ -157,6 +157,17 @@ void main(){
 })<shadercode>";
 
 
+const std::string simple_diff_fragmentshader_code = R"<shadercode>(
+#version 330 core
+in vec2 out_t;
+uniform sampler2D diff_texture;
+out vec3 color;
+
+void main(){
+    color.rgb = texture2D(diff_texture, out_t).rgb;
+})<shadercode>";
+
+
 const std::string simple_matrix_transform_vertexshader_code = R"<shadercode>(
 #version 330 core
 
