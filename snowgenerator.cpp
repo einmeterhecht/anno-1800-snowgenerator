@@ -93,6 +93,7 @@ int main(int argc, char *argv[])
     }
 
     vector<std::filesystem::path> error_files;
+    vector<Texture> default_textures = std::vector<Texture>();
 
     for (int cfg_index = 0; cfg_index < target_files.size(); cfg_index++) {
         string cfg_path = target_files.at(cfg_index).string();
@@ -100,8 +101,8 @@ int main(int argc, char *argv[])
         cout << cfg_path << endl;
 
         try {
-            CfgFile cfg_file = CfgFile(cfg_path, cli_options);
-            cfg_file.load_models_and_textures(&cfg_file.loaded_textures);
+            CfgFile cfg_file = CfgFile(cfg_path, &default_textures, cli_options);
+            cfg_file.load_models_and_textures();
             if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while loading textures" << endl;
 
             map<string, GLuint> rendered_snowmaps{};
@@ -119,12 +120,12 @@ int main(int argc, char *argv[])
 
                     int width, height;
 
-                    fs::path texture_out_path = cfg_material.out_texture_paths[0];
-                    string texture_rel_path = cfg_material.rel_texture_paths[0];
+                    fs::path texture_out_path = cfg_material.textures[0]->out_path;
+                    string texture_rel_path = cfg_material.textures[0]->rel_path;
 
                     // GLuint old_render_target_texture = render_target_texture;
                     if (!rendered_snowmaps.contains(texture_rel_path)) {
-                        get_dimensions(cfg_material.texture_ids[0], &width, &height);
+                        get_dimensions(cfg_material.textures[0]->texture_id, &width, &height);
                         // Create render target
                         rendered_snowmaps[texture_rel_path] = create_empty_texture(
                             width, height, GL_RGB, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
@@ -159,7 +160,7 @@ int main(int argc, char *argv[])
                     
                     GLuint texture_location_in_shader = glGetUniformLocation(render_isometric_program, "diff");
                     glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, cfg_material.texture_ids[0]);
+                    glBindTexture(GL_TEXTURE_2D, cfg_material.textures[0]->texture_id);
                     glUniform1i(texture_location_in_shader, 0);
 
                     mesh.bind_buffers();
@@ -209,12 +210,12 @@ int main(int argc, char *argv[])
                     CfgMaterial& cfg_material = cfg_file.cfg_models[i].cfg_materials[j];
                     bool already_saved_all_textures = true;
                     for (int k = 0; k < texture_types_count && already_saved_all_textures; k++)
-                        already_saved_all_textures &= saved_textures.contains(cfg_material.texture_ids[k]);
+                        already_saved_all_textures &= saved_textures.contains(cfg_material.textures[k]->texture_id);
                     // Skip this material if all the textures were already saved by another material or if it hasn't been used by the mesh
-                    if (already_saved_all_textures || (!rendered_snowmaps.contains(cfg_material.rel_texture_paths[0]))) continue;
+                    if (already_saved_all_textures || (!rendered_snowmaps.contains(cfg_material.textures[0]->rel_path))) continue;
 
                     int width, height;
-                    get_dimensions(cfg_material.texture_ids[0], &width, &height);
+                    get_dimensions(cfg_material.textures[0]->texture_id, &width, &height);
                     GLuint framebuffer_id = create_framebuffer(texture_types_count);
                     GLuint snowed_textures[texture_types_count];
                     for (int k = 0; k < texture_types_count; k++) {
@@ -234,7 +235,7 @@ int main(int argc, char *argv[])
 
                     GLuint texture_location_in_shader = glGetUniformLocation(combine_to_snowed_textures_program, "snowmap");
                     glActiveTexture(GL_TEXTURE3);
-                    glBindTexture(GL_TEXTURE_2D, rendered_snowmaps[cfg_material.rel_texture_paths[0]]);
+                    glBindTexture(GL_TEXTURE_2D, rendered_snowmaps[cfg_material.textures[0]->rel_path]);
                     glUniform1i(texture_location_in_shader, 3);
 
                     texture_location_in_shader = glGetUniformLocation(combine_to_snowed_textures_program, "noise");
@@ -248,19 +249,19 @@ int main(int argc, char *argv[])
 
                     if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while combining original texture and snowmap" << endl;
                     for (int k = 0; k < texture_types_count; k++) {
-                        if (k == 1) saved_textures.insert(cfg_material.texture_ids[k]); // Do not save normalmaps
-                        if (saved_textures.contains(cfg_material.texture_ids[k])){
+                        if (k == 1) saved_textures.insert(cfg_material.textures[k]->texture_id); // Do not save normalmaps
+                        if (saved_textures.contains(cfg_material.textures[k]->texture_id)){
                             // cout << "Do not safe texture twice" << endl;
-                        } else if (cfg_material.rel_texture_paths[k].find("default_model_") != string::npos) {
+                        } else if (cfg_material.textures[k]->rel_path.find("default_model_") != string::npos) {
                             // cout << "Do not save the default texture " << cfg_constants::texture_names[k];
                         }
                         else{
-                            if (is_forbidden_texture(cfg_material.rel_texture_paths[k])){
-                                cout << "Save blacklisted texture " << cfg_material.out_texture_paths[k];
+                            if (is_forbidden_texture(cfg_material.textures[k]->rel_path)){
+                                cout << "Save blacklisted texture " << cfg_material.textures[k]->out_path;
                             }
-                            if (cli_options.save_png) gl_texture_to_png_file(snowed_textures[k], cfg_material.out_texture_paths[k], true);
-                            if (cli_options.save_dds) gl_texture_to_dds_mipmaps(snowed_textures[k], cfg_material.out_texture_paths[k], cfg_material.mipmap_count[k]);
-                            saved_textures.insert(cfg_material.texture_ids[k]);
+                            if (cli_options.save_png) gl_texture_to_png_file(snowed_textures[k], cfg_material.textures[k]->out_path, true);
+                            if (cli_options.save_dds) gl_texture_to_dds_mipmaps(snowed_textures[k], cfg_material.textures[k]->out_path, cfg_material.textures[k]->mipmap_count);
+                            saved_textures.insert(cfg_material.textures[k]->texture_id);
 
                         }
                         /*cout << "Do not save texture " << cfg_constants::texture_names[k];
@@ -306,6 +307,6 @@ int main(int argc, char *argv[])
     glfwTerminate();
     // Let the user press enter to close window
     char* _ = new char[2];
-    cin.getline(_, 2);
+    std::cin.getline(_, 2);
     delete[] _;
 }

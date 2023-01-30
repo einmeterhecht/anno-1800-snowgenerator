@@ -5,6 +5,7 @@
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
+#include <unordered_map>
 #include "../external/glew-2.2.0/include/GL/glew.h"
 #include "../external/glfw-3.3.6/include/GLFW/glfw3.h"
 #include "../external/rapidxml/rapidxml.hpp"
@@ -34,43 +35,54 @@ std::filesystem::path find_datapath(std::filesystem::path path_into_data);
 
 std::filesystem::path backward_to_forward_slashes(std::filesystem::path original);
 
+class Texture
+{
+public:
+    std::string rel_path;
+	std::filesystem::path abs_path;
+	std::filesystem::path out_path;
+	
+	size_t mipmap_count;
+	GLuint texture_id;
+	bool is_loaded = false;
+
+	Texture(std::string texture_rel_path, std::filesystem::path texture_abs_path, std::filesystem::path out_base_path, bool save_snowed_texture);
+	void load();
+	~Texture();
+};
+
 class CfgMaterial
 {
 public:
-	std::string rel_texture_paths[texture_types_count];
-	std::filesystem::path abs_texture_paths[texture_types_count];
-	std::filesystem::path out_texture_paths[texture_types_count];
-	size_t mipmap_count[texture_types_count];
-
+	Texture* textures[texture_types_count];
 	std::string vertex_format;
 
-	GLuint texture_ids[texture_types_count];
-	CfgMaterial(rapidxml::xml_node<>* input_node, std::filesystem::path data_path, CliOptions cli_options);
-	~CfgMaterial();
+	CfgMaterial(rapidxml::xml_node<>* input_node, std::filesystem::path data_path,
+		std::unordered_map<std::string, Texture>* all_textures, std::vector<Texture>* default_textures, CliOptions cli_options);
 	
-	void load_textures(std::map<std::wstring, GLuint>* loaded_textures);
 	void bind_textures(GLuint shader_program_id);
 };
 
 class CfgModel
 {
 public:
-	CfgModel(rapidxml::xml_node<>* input_node, std::filesystem::path data_path, CliOptions cli_options);
-	void load_models_and_textures(std::map<std::wstring, GLuint>* loaded_textures);
+	CfgModel(rapidxml::xml_node<>* input_node, std::filesystem::path data_path,
+		std::unordered_map<std::string, Texture>* all_textures, std::vector<Texture>* default_textures, CliOptions cli_options);
 	void load_model();
 
 	std::filesystem::path rdm_filename;
 
 	std::vector<CfgMaterial> cfg_materials;
 	HardwareRdm mesh;
+
 };
 
 class CfgFile
 {
 public:
-	CfgFile(std::filesystem::path input_filepath, CliOptions cli_options);
-	int load_models_and_textures(std::map<std::wstring, GLuint>* loaded_textures);
+	CfgFile(std::filesystem::path input_filepath, std::vector<Texture>* default_textures, CliOptions cli_options);
+	void load_models_and_textures();
 
 	std::vector<CfgModel> cfg_models;
-	std::map<std::wstring, GLuint> loaded_textures{};
+	std::unordered_map<std::string, Texture> all_textures;
 };

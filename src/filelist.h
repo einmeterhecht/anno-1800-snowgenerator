@@ -51,7 +51,7 @@ const inline char* texture_blacklist[] = {
 	"atlas", //"data/graphics/props/shared_textures/prop_atlas_4k",//
 	"quay_system",
 	"data/graphics/buildings/3rd_party/3rd_party_06/maps/3rd_party_06_", //Old Nate
-	//"data/graphics/ui/3d_objects/world_map/maps/afric",//(sic)
+	//"data/graphics/ui/3d_objects/world_map/maps/afric", //(sic)
     //"data/graphics/ui/3d_objects/world_map/maps/c",
 	//"data/graphics/ui/3d_objects/world_map/maps/polar",
 	//"data/graphics/ui/3d_objects/world_map/maps/kontor_colony",
@@ -72,6 +72,5 @@ const inline char* whitelist[] = {
 bool ends_in_cfg(std::string path);
 bool is_old_world(std::string path);
 bool is_old_world_cfg(std::string path);
-bool is_forbidden_texture(std::string path);
 bool is_forbidden_texture(std::string path);
 void get_file_list(std::filesystem::path directory_path, std::vector<std::filesystem::path>* target_files, bool (*check_function)(std::string));
