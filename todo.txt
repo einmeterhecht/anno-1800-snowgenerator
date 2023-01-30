@@ -3,7 +3,7 @@
 - Add saving isometric renderings as CLI parameter
 - Adjust isometric rendering to size of building
 - Render after snow has been generated
-- Don't output success message for every mipmap saved
-- Create "Texture" class
-- Debug residence_tier01_diff being incorrect
+# Don't output success message for every mipmap saved
+# Create "Texture" class
+# Debug residence_tier01_diff being incorrect
 - 

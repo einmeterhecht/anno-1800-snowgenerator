@@ -316,8 +316,9 @@ void gl_texture_to_dds_mipmaps(GLuint texture_id, std::filesystem::path filename
 			std::wcout << static_cast<unsigned int>(hr) << std::wstring(GetErrorDesc(hr)) << std::endl;
 		}
 		else {
-			std::cout << "Texture successfully saved to " << full_out_path.string() << std::endl;
+			
 		}
 	}
+	std::cout << "Saved " << mipmap_count << " miplevels for " << filename_until_mipmap_indication.string() << std::endl;
 	compressed_mipmaps->Release();
 }

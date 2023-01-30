@@ -115,8 +115,8 @@ int main(int argc, char *argv[])
                 //mesh.print_information();
                 /*min(mesh.materials_count, cfg_file.cfg_models[i].cfg_materials.size())*/
                 for (int j = 0; j < mesh.materials_count; j++) {
-                    CfgMaterial& cfg_material = cfg_file.cfg_models[i].cfg_materials[min(
-                        *((unsigned long long *) &(mesh.materials[j].index)), cfg_file.cfg_models[i].cfg_materials.size() - 1)];
+                    int cfg_material_index = min(mesh.materials[j].index, cfg_file.cfg_models[i].cfg_materials.size() - 1);
+                    CfgMaterial& cfg_material = cfg_file.cfg_models[i].cfg_materials[cfg_material_index];
 
                     int width, height;
 
