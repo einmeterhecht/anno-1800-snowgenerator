@@ -64,6 +64,14 @@ uniform sampler2D norm_texture;
 uniform sampler2D metallic_texture;
 
 void main() {
+    float geometry_normal_y_component = ngb_matrix[0][1];
+    if (geometry_normal_y_component < 0.3) {
+        // Do not generate snow where the geometry is steep
+        // On the upper edge of bricks, the normal map makes the fragments appear inclined horizontally.
+        color = vec3(0., 0, 0.5);
+        return;
+    }
+    
     vec3 normalmap_color = texture2D(norm_texture, out_t).rgb;
     vec3 normalmap_vector = vec3(0.0, normalmap_color.x*(-2.0) + 1.0, normalmap_color.y*(-2.0) + 1.0);
     // Calculate the blue component (missing in norm_texture)
