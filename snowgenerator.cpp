@@ -30,7 +30,8 @@ What this program does:
     - "Render" to the textures: Inputs are the snowmap, the original textures and a noise texture.
     - Fragmentshader will combine the input and write snowed versions of the input textures to the 3 output textures.
       - Simplified version of the algorithm:
-        if ((snow_likeliness > noise) || (snow_likeliness > 0.9)){
+	    snow_likeliness = normal_vector_of_this_fragment.y
+        if ((snow_likeliness > noise) || (snow_likeliness > 0.9)) {
             diffuse  = vec4(0.755, 0.791, 0.806, 1.);
             metallic = vec4(0., 0., 0., original_metallic.a);
         }
@@ -61,7 +62,7 @@ int main(int argc, char *argv[])
     CliOptions cli_options = CliOptions(argc, argv, std::filesystem::path(__argv[0]).parent_path());
 
     vector<std::filesystem::path> target_files;
-    if (cli_options.disable_filenamefilters){
+    if (cli_options.disable_filenamefilters) {
         get_file_list(cli_options.dir_to_parse, &target_files, &ends_in_cfg);
     }
     else {
@@ -69,7 +70,7 @@ int main(int argc, char *argv[])
     }
 
     GlStuff context_gl = GlStuff();
-    while (glGetError() != GL_NO_ERROR) cout << "GL ERROR while initializing" << endl;
+    while (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while initializing" << endl;
     GLuint snow_program = compile_shaders_to_program(
         texcoord_as_positon_2_vertexshader_code, snow_fragmentshader_code);
     GLuint copy_texture_program = compile_shaders_to_program(
@@ -81,29 +82,29 @@ int main(int argc, char *argv[])
     GLuint render_isometric_program = compile_shaders_to_program(
         simple_matrix_transform_vertexshader_code, simple_diff_fragmentshader_code);
 
-    while (glGetError() != GL_NO_ERROR) cout << "GL ERROR while compiling shaders" << endl;
+    while (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while compiling shaders" << endl;
 
     context_gl.load_square_vertexbuffer();
     context_gl.load_noise_texture(4096);
-    if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while loading shaders & data" << endl;
+    if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while loading shaders & data" << endl;
 
-    cout << "Found " << target_files.size() << " files: " << endl;
+    std::cout << "Found " << target_files.size() << " files: " << endl;
     for (int cfg_index = 0; cfg_index < target_files.size(); cfg_index++) {
-         cout << target_files.at(cfg_index).string() << endl;
+         std::cout << target_files.at(cfg_index).string() << endl;
     }
 
     vector<std::filesystem::path> error_files;
-    vector<Texture> default_textures = std::vector<Texture>();
+    vector<Texture> default_textures = load_default_textures();
 
     for (int cfg_index = 0; cfg_index < target_files.size(); cfg_index++) {
         string cfg_path = target_files.at(cfg_index).string();
-        cout << "\n\n\nCfg file " << cfg_index + 1 << " / " << target_files.size() << endl;
-        cout << cfg_path << endl;
+        std::cout << "\n\n\nCfg file " << cfg_index + 1 << " / " << target_files.size() << endl;
+        std::cout << cfg_path << endl;
 
         try {
             CfgFile cfg_file = CfgFile(cfg_path, &default_textures, cli_options);
             cfg_file.load_models_and_textures();
-            if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while loading textures" << endl;
+            if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while loading textures" << endl;
 
             map<string, GLuint> rendered_snowmaps{};
             map<string, GLuint> framebuffer_ids{};
@@ -113,7 +114,6 @@ int main(int argc, char *argv[])
             for (int i = 0; i < cfg_file.cfg_models.size(); i++) {
                 HardwareRdm& mesh = cfg_file.cfg_models[i].mesh;
                 //mesh.print_information();
-                /*min(mesh.materials_count, cfg_file.cfg_models[i].cfg_materials.size())*/
                 for (int j = 0; j < mesh.materials_count; j++) {
                     int cfg_material_index = min(mesh.materials[j].index, cfg_file.cfg_models[i].cfg_materials.size() - 1);
                     CfgMaterial& cfg_material = cfg_file.cfg_models[i].cfg_materials[cfg_material_index];
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
                         get_dimensions(rendered_snowmaps[texture_rel_path], &width, &height);
                     }
 
-                    //cout << "MATERIA" << endl;
+                    //std::cout << "MATERIA" << endl;
 
                     // Render a snowmap to rendered_snowmaps[texture_rel_path]
                     /*GLint old_framebuffer;
@@ -152,38 +152,6 @@ int main(int argc, char *argv[])
                         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_ids[texture_rel_path]); // Render to snowmap
                     }*/
 
-                    // Render model to screen so that the user has something to look at
-                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-                    glViewport(0, 0, context_gl.window_w, context_gl.window_h);
-
-                    glUseProgram(render_isometric_program);
-                    
-                    GLuint texture_location_in_shader = glGetUniformLocation(render_isometric_program, "diff");
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, cfg_material.textures[0]->texture_id);
-                    glUniform1i(texture_location_in_shader, 0);
-
-                    mesh.bind_buffers();
-                    context_gl.bind_vertexformat(cfg_material.vertex_format, mesh.vertices_size);
-
-                    glEnable(GL_DEPTH_TEST);
-                    glDepthFunc(GL_LESS);
-                    GLuint matrix_location_in_shader = glGetUniformLocation(render_isometric_program, "transformation_matrix");
-                    load_isometric_matrix(matrix_location_in_shader, 0.4);
-
-                    glDrawElements(
-                        GL_TRIANGLES,
-                        mesh.materials[j].size,
-                        mesh.get_corner_datatype(),
-                        (void*)(mesh.materials[j].offset*mesh.corner_size)
-                    );
-
-                    if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while rendering" << endl;
-
-                    glfwSwapBuffers(context_gl.window);
-                    glfwPollEvents();
-
-
                     glViewport(0, 0, width, height);
                     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer_ids[texture_rel_path]); // Render to snowmap
 
@@ -191,7 +159,8 @@ int main(int argc, char *argv[])
                     glUseProgram(snow_program);
                     cfg_material.bind_textures(snow_program);
 
-                    // Buffers of mesh do not have to be bound again
+                    mesh.bind_buffers();
+                    context_gl.bind_vertexformat(cfg_material.vertex_format, mesh.vertices_size);
 
                     glDrawElements(
                         GL_TRIANGLES,
@@ -201,32 +170,30 @@ int main(int argc, char *argv[])
                     );
                     context_gl.unbind_vertexformat(cfg_material.vertex_format);
 
-                    if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while rendering" << endl;
+                    if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while rendering" << endl;
                 }
             }
-            set<GLuint> saved_textures = set<GLuint>();
             for (int i = 0; i < cfg_file.cfg_models.size(); i++) {
                 for (int j = 0; j < cfg_file.cfg_models[i].cfg_materials.size(); j++) {
                     CfgMaterial& cfg_material = cfg_file.cfg_models[i].cfg_materials[j];
-                    bool already_saved_all_textures = true;
-                    for (int k = 0; k < texture_types_count && already_saved_all_textures; k++)
-                        already_saved_all_textures &= saved_textures.contains(cfg_material.textures[k]->texture_id);
+                    
+                    bool all_textures_have_snow = true;
+                    for (int k = 0; k < texture_types_count && all_textures_have_snow; k++)
+                        all_textures_have_snow &= cfg_material.textures[k]->is_snow_generated;
+                    
                     // Skip this material if all the textures were already saved by another material or if it hasn't been used by the mesh
-                    if (already_saved_all_textures || (!rendered_snowmaps.contains(cfg_material.textures[0]->rel_path))) continue;
+                    if (all_textures_have_snow || (!rendered_snowmaps.contains(cfg_material.textures[0]->rel_path))) continue;
 
                     int width, height;
                     get_dimensions(cfg_material.textures[0]->texture_id, &width, &height);
-                    GLuint framebuffer_id = create_framebuffer(texture_types_count);
-                    GLuint snowed_textures[texture_types_count];
+                    
+                    GLuint framebuffer_id = create_framebuffer(texture_types_count);                    
                     for (int k = 0; k < texture_types_count; k++) {
                         // get_dimensions(cfg_material->texture_ids[k], &width, &height);
                         // Assume all related textures to have the same dimensions
-                        snowed_textures[k] = create_empty_texture(
-                            width, height, GL_RGBA,
-                            GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
                         glFramebufferTexture(
                             GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + k,
-                            snowed_textures[k], 0);
+                            cfg_material.textures[k]->snowed_texture_id, 0);
                     }
 
                     glViewport(0, 0, width, height);
@@ -247,60 +214,105 @@ int main(int argc, char *argv[])
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)0);
                     context_gl.unbind_square_buffers();
 
-                    if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while combining original texture and snowmap" << endl;
-                    for (int k = 0; k < texture_types_count; k++) {
-                        if (k == 1) saved_textures.insert(cfg_material.textures[k]->texture_id); // Do not save normalmaps
-                        if (saved_textures.contains(cfg_material.textures[k]->texture_id)){
-                            // cout << "Do not safe texture twice" << endl;
-                        } else if (cfg_material.textures[k]->rel_path.find("default_model_") != string::npos) {
-                            // cout << "Do not save the default texture " << cfg_constants::texture_names[k];
-                        }
-                        else{
-                            if (is_forbidden_texture(cfg_material.textures[k]->rel_path)){
-                                cout << "Save blacklisted texture " << cfg_material.textures[k]->out_path;
-                            }
-                            if (cli_options.save_png) gl_texture_to_png_file(snowed_textures[k], cfg_material.textures[k]->out_path, true);
-                            if (cli_options.save_dds) gl_texture_to_dds_mipmaps(snowed_textures[k], cfg_material.textures[k]->out_path, cfg_material.textures[k]->mipmap_count);
-                            saved_textures.insert(cfg_material.textures[k]->texture_id);
-
-                        }
-                        /*cout << "Do not save texture " << cfg_constants::texture_names[k];
-                        cout << " " << cfg_material.out_texture_paths[k] << endl;*/
-                    }
-                    if (glGetError() != GL_NO_ERROR) cout << "GL ERROR while saving texture" << endl;
-                    glDeleteTextures(texture_types_count, snowed_textures);
+                    if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while combining original texture and snowmap" << endl;
+                    
+                    for (int k = 0; k < texture_types_count; k++)
+                        cfg_material.textures[k]->is_snow_generated = true;
                     glDeleteFramebuffers(1, &framebuffer_id);
                 }
             }
-            for (const auto& [texture_out_path, snowmap_texture] : rendered_snowmaps) {
-                glDeleteTextures(1, &snowmap_texture);
-                glDeleteFramebuffers(1, &framebuffer_ids[texture_out_path]);
+
+            // Render model to screen so that the user has something to look at
+            
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, context_gl.window_w, context_gl.window_h);
+            glUseProgram(render_isometric_program);
+            
+            for (int i = 0; i < cfg_file.cfg_models.size(); i++) {
+                HardwareRdm& mesh = cfg_file.cfg_models[i].mesh;
+                for (int j = 0; j < mesh.materials_count; j++) {
+                    int cfg_material_index = min(mesh.materials[j].index, cfg_file.cfg_models[i].cfg_materials.size() - 1);
+                    CfgMaterial& cfg_material = cfg_file.cfg_models[i].cfg_materials[cfg_material_index];
+                    
+                    GLuint texture_location_in_shader = glGetUniformLocation(render_isometric_program, "diff");
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, cfg_file.cfg_models[i].cfg_materials[j].textures[0]->snowed_texture_id);
+                    glUniform1i(texture_location_in_shader, 0);
+
+                    mesh.bind_buffers();
+                    context_gl.bind_vertexformat(cfg_material.vertex_format, mesh.vertices_size);
+
+                    glEnable(GL_DEPTH_TEST);
+                    glDepthFunc(GL_LESS);
+                    GLuint matrix_location_in_shader = glGetUniformLocation(render_isometric_program, "transformation_matrix");
+                    load_isometric_matrix(matrix_location_in_shader, 1.f / cfg_file.mesh_radius);
+
+                    glDrawElements(
+                        GL_TRIANGLES,
+                        mesh.materials[j].size,
+                        mesh.get_corner_datatype(),
+                        (void*)(mesh.materials[j].offset* mesh.corner_size)
+                    );
+
+                    if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while rendering" << endl;
+
+                    glfwSwapBuffers(context_gl.window);
+                    glfwPollEvents();
+                }
+            }
+
+            for (auto& [texture_rel_path, texture] : cfg_file.all_textures) {
+                if (texture.type == 1) {
+                    // Do not save normalmaps
+                    texture.is_snowed_version_saved = true;
+                }
+                else if (texture.is_snowed_version_saved) {
+                    // std::cout << "Do not safe texture twice" << endl;
+                } else if (texture.rel_path.find("default_model_") != string::npos) {
+                    // std::cout << "Do not save the default texture " << cfg_constants::texture_names[k];
+                }
+                else{
+                    if (is_forbidden_texture(texture.rel_path)) {
+                        // If filenamefilters are active, default textures are loaded instead of blacklisted ones.
+                        // If the program reaches this points, filenamefilters are disabled.
+                        std::cout << "Save blacklisted texture " << texture.out_path;
+                    }
+                    if (cli_options.save_png) {
+                        gl_texture_to_png_file(texture.snowed_texture_id, texture.out_path, true);
+                    }
+                    if (cli_options.save_dds) {
+                        gl_texture_to_dds_mipmaps(texture.snowed_texture_id, texture.out_path, texture.mipmap_count);
+                    }
+                    texture.is_snowed_version_saved = true;
+                }
+                if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while saving texture" << endl;
+                texture.cleanup();
             }
         }
         catch (snow_exception exception) {
-            cout << "Error processing file " << cfg_path << endl;
+            std::cout << "Error processing file " << cfg_path << endl;
             error_files.push_back(cfg_path);
-            cout << "Move on to next file" << endl;
+            std::cout << "Move on to next file" << endl;
         }
         catch (rapidxml::parse_error exception) {
-            cout << "Damaged cfg file " << cfg_path << endl;
+            std::cout << "Damaged cfg file " << cfg_path << endl;
             error_files.push_back(cfg_path);
-            cout << "Move on to next file" << endl;
+            std::cout << "Move on to next file" << endl;
         }/*
         catch (exception exception) {
-            cout << "Uncaught exception in cfg file " << cfg_path << endl;
+            std::cout << "Uncaught exception in cfg file " << cfg_path << endl;
             error_files.push_back(cfg_path);
-            cout << "Move on to next file" << endl;
+            std::cout << "Move on to next file" << endl;
         }*/
     }
-    cout << "Done. "
+    std::cout << std::endl << "Done. "
         << target_files.size() << " files processed, "
         << target_files.size() - error_files.size() << " successful." << endl;
-    if (error_files.size() == 0) cout << "No errors" << endl;
+    if (error_files.size() == 0) std::cout << "No errors" << endl;
     else {
-        cout << "ERRORS in these " << error_files.size() << " files:" << endl;
+        std::cout << "ERRORS in these " << error_files.size() << " files:" << endl;
         for (fs::path error_path : error_files) {
-            cout << error_path.string() << endl;
+            std::cout << error_path.string() << endl;
         }
     }
     context_gl.cleanup();

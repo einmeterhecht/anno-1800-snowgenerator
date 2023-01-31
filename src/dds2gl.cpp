@@ -90,7 +90,7 @@ GLuint dds_file_to_gl_texture(std::wstring dds_filepath) {
 	
 	glfwPollEvents();
 	
-	if ((hr)){
+	if ((hr)) {
 		scratchimage->Release();
 		std::wcout << "Could not load from " << dds_filepath << std::endl;
 		throw snow_exception("Texture loading from dds file failed...");
@@ -149,8 +149,8 @@ GLuint dds_file_to_gl_texture(std::wstring dds_filepath) {
 
 int gl_texture_to_png_file(GLuint texture_id, std::filesystem::path filename, boolean append_extension)
 {
-    if (append_extension){
-		if (!(filename.string().ends_with(".png") || filename.string().ends_with(".PNG"))){
+    if (append_extension) {
+		if (!(filename.string().ends_with(".png") || filename.string().ends_with(".PNG"))) {
 			filename = filename.concat(".png");
 		}
 	}
@@ -179,7 +179,7 @@ int gl_texture_to_png_file(GLuint texture_id, std::filesystem::path filename, bo
 	long hr = DirectX::SaveToWICFile(image, DirectX::WIC_FLAGS_NONE, DirectX::GetWICCodec(DirectX::WIC_CODEC_PNG), filename.c_str());
 	delete[] image.pixels;
 
-	if (FAILED(hr)){
+	if (FAILED(hr)) {
 		std::cout << "Could not save to \"" << filename.string() << "\"" << std::endl;
 		std::wcout << static_cast<unsigned int>(hr) << std::wstring(GetErrorDesc(hr)) << std::endl;
 		throw snow_exception("Texture saving failed");

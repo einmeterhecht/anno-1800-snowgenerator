@@ -11,7 +11,7 @@
 https://github.com/opengl-tutorials/ogl/tree/master/tutorial14_render_to_texture
 (The example code of https://www.opengl-tutorial.org/ )*/
 
-GlStuff::GlStuff(bool init){
+GlStuff::GlStuff(bool init) {
 	glfwInit();
 	glfwWindowHint(GLFW_SAMPLES, 16);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -37,7 +37,7 @@ GlStuff::GlStuff(bool init){
 		glfwTerminate();
 		status = 1;
 	}
-	while (glGetError() != GL_NO_ERROR){} // Delete all the errors generated during GLEW initialisation
+	while (glGetError() != GL_NO_ERROR) {} // Delete all the errors generated during GLEW initialisation
 
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 	glfwPollEvents();
@@ -172,7 +172,7 @@ void GlStuff::bind_or_unbind_vertexformat(std::string vertex_format, uint32_t ve
 			uint32_t attribute_id_in_shader = std::string(VERTEX_ATTRIBUTES).find(attribute_name);
 			// If the attribute occurs multiple times in vertex_format (e.g. P4h_N4b_G4b_B4b_T2h_C4b_C4b)
 			// the first C4b gets attribute_id_in_shader=5; the second C4b attribute_id_in_shader=6.
-			for (int i = 0; i < offset_to_attribute_in_vertex_format_string; i++){
+			for (int i = 0; i < offset_to_attribute_in_vertex_format_string; i++) {
 				if (vertex_format[i] == attribute_name) attribute_id_in_shader++;
 			}
 			if (unbind) glDisableVertexAttribArray(attribute_id_in_shader);
@@ -281,4 +281,4 @@ void GlStuff::cleanup()
 	glDeleteBuffers(1, &square_vertexbuffer);
 	glDeleteBuffers(1, &square_indexbuffer);
 }
-GlStuff::~GlStuff(){}
+GlStuff::~GlStuff() {}

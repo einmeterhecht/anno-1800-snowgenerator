@@ -51,13 +51,14 @@ const inline char* texture_blacklist[] = {
 	"atlas", //"data/graphics/props/shared_textures/prop_atlas_4k",//
 	"quay_system",
 	"data/graphics/buildings/3rd_party/3rd_party_06/maps/3rd_party_06_", //Old Nate
+	"bridges",
+	"_ground"
 	//"data/graphics/ui/3d_objects/world_map/maps/afric", //(sic)
     //"data/graphics/ui/3d_objects/world_map/maps/c",
 	//"data/graphics/ui/3d_objects/world_map/maps/polar",
 	//"data/graphics/ui/3d_objects/world_map/maps/kontor_colony",
 	//"data/graphics/ui/3d_objects/world_map/maps/south_america",
-	//"data/graphics/ui/3d_objects/world_map/maps/world",
-	"bridges"
+	//"data/graphics/ui/3d_objects/world_map/maps/world"
 };
 
 #define WHITELIST_SIZE 4

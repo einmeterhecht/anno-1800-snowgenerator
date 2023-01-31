@@ -31,7 +31,7 @@ GLuint compile_shader(const std::string shader_code, GLenum type)
     return shader_id;
 }
 
-GLuint compile_shaders_to_program(const std::string vertexshader_code, const std::string fragmentshader_code){
+GLuint compile_shaders_to_program(const std::string vertexshader_code, const std::string fragmentshader_code) {
     GLuint vertex_shader = compile_shader(vertexshader_code, GL_VERTEX_SHADER);
     GLuint fragment_shader = compile_shader(fragmentshader_code, GL_FRAGMENT_SHADER);
 

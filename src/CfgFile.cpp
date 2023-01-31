@@ -11,6 +11,7 @@
 #include "snow_exception.h"
 #include "filelist.h"
 #include "../external/rapidxml/rapidxml.hpp"
+#include "gl_stuff.h"
 
 using namespace rapidxml;
 namespace fs = std::filesystem;
@@ -41,6 +42,25 @@ fs::path backward_to_forward_slashes(fs::path original) {
 		n++;
 	}
 	return fs::path(target);
+}
+
+std::vector<Texture> load_default_textures()
+{
+	std::vector<Texture> default_textures = std::vector<Texture>();
+		DirectX::Image image{};
+	for (int i = 0; i < texture_types_count; i++) {
+		default_textures.push_back(Texture(cfg_constants::default_texture_paths[i], fs::path(), fs::path(), i, false));
+
+		image.width = 1;
+		image.height = 1;
+		image.pixels = (uint8_t*)(&cfg_constants::default_texture_colors[i]);
+		image.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		image.rowPitch = image.width * 4;
+		image.slicePitch = image.width * image.height * 4;
+		(&default_textures[i])->texture_id = directx_image_to_gl_texture(&image);
+		(&default_textures[i])->is_loaded = true;
+	}
+	return default_textures;
 }
 
 CfgFile::CfgFile(std::filesystem::path input_filepath, std::vector<Texture>* default_textures, CliOptions cli_options) {
@@ -75,6 +95,16 @@ CfgFile::CfgFile(std::filesystem::path input_filepath, std::vector<Texture>* def
 	// Reading XML file using rapidxml
 	xml_document<> doc;
 	doc.parse<0>(xml_buffer_to_parse);
+	xml_node<>* mesh_radius_tag = doc.first_node()->first_node("MeshRadius", 10);
+    mesh_radius = 4;
+	if (mesh_radius_tag) {
+		try {
+			mesh_radius = std::stof(std::string(mesh_radius_tag->value(), mesh_radius_tag->value_size()));
+		}
+		catch (std::exception) {
+			mesh_radius = 4;
+		}
+	}
 
 	xml_node<> *models_tag = doc.first_node()->first_node("Models", 6);
 
@@ -145,27 +175,28 @@ CfgMaterial::CfgMaterial(rapidxml::xml_node<>* input_node, std::filesystem::path
 	//std::cout << "\n\nReading a material of ConfigType " << input_node->first_node("ConfigType")->value() << std::endl;
 	vertex_format = input_node->first_node("VertexFormat")->value();
 
-	for (int i=0; i< texture_types_count; i++){
+	for (int i=0; i< texture_types_count; i++) {
 		rapidxml::xml_node<>* texture_exists_node = input_node->first_node(cfg_constants::textures_exist_tagname_in_cfg[i]);
 		rapidxml::xml_node<>* texture_path_node   = input_node->first_node(cfg_constants::textures_path_tagname_in_cfg [i]);
 
 		bool is_texture_valid = false;
-		std::string texture_rel_path = cfg_constants::default_textures[i];
+		std::string texture_rel_path = cfg_constants::default_texture_paths[i];
+		textures[i] = &(*default_textures)[i];
 
 		if (texture_exists_node == nullptr) {
 			std::cout << "WARNING: " << cfg_constants::texture_names[i] << " is neither enabled or disabled." << std::endl;
-			std::cout << "There is no <" << cfg_constants::textures_exist_tagname_in_cfg[i] << "> tag. Use default texture instead." << std::endl;
+			std::cout << "There is no <" << cfg_constants::textures_exist_tagname_in_cfg[i] << "> tag. ";
 		}
 		else if (texture_exists_node->value_size() != 1) {
-			std::cout << "WARNING: " << cfg_constants::texture_names[i] << " is disabled. Use default texture instead." << std::endl;
+			std::cout << "WARNING: " << cfg_constants::texture_names[i] << " is disabled.";
 		}
 		else if (texture_exists_node->value()[0] != '1') {
-			std::cout << "WARNING: " << cfg_constants::texture_names[i] << " is disabled. Use default texture instead." << std::endl;
+			std::cout << "WARNING: " << cfg_constants::texture_names[i] << " is disabled. ";
 			std::cout << cfg_constants::textures_exist_tagname_in_cfg[i] << " = \"" << texture_exists_node->value() << "\"" << std::endl;
 		}
 		else if (texture_path_node == nullptr) {
 			// Only in data/graphics/ui/3d_objects/world_map/world_map_01.cfg
-			std::cout << "WARNING: There is no <" << cfg_constants::textures_path_tagname_in_cfg[i] << "> tag. Use default texture instead." << std::endl;
+			std::cout << "WARNING: There is no <" << cfg_constants::textures_path_tagname_in_cfg[i] << "> tag. ";
 		}
 		else {
 			// Program reaches this point if there is a texture specified in the .cfg
@@ -194,7 +225,7 @@ CfgMaterial::CfgMaterial(rapidxml::xml_node<>* input_node, std::filesystem::path
 					fs::path texture_abs_path = backward_to_forward_slashes(fs::path(data_path).append(texture_rel_path));
 					if (fs::exists(texture_abs_path)) {
 						all_textures->insert(std::pair<std::string, Texture>(texture_rel_path,
-							Texture(texture_rel_path, texture_abs_path, cli_options.out_path, true)));
+							Texture(texture_rel_path, texture_abs_path, cli_options.out_path, i, true)));
 						textures[i] = &(all_textures->at(texture_rel_path));
 						is_texture_valid = true;
 					}
@@ -203,7 +234,7 @@ CfgMaterial::CfgMaterial(rapidxml::xml_node<>* input_node, std::filesystem::path
 						fs::path texture_abs_path = backward_to_forward_slashes(fs::path(cli_options.extracted_maindata_path).append(texture_rel_path));
 						if (fs::exists(texture_abs_path)) {
 							all_textures->insert(std::pair<std::string, Texture>(texture_rel_path,
-								Texture(texture_rel_path, texture_abs_path, cli_options.out_path, cli_options.save_non_mod_textures)));
+								Texture(texture_rel_path, texture_abs_path, cli_options.out_path, i, cli_options.save_non_mod_textures)));
 							textures[i] = &(all_textures->at(texture_rel_path));
 							is_texture_valid = true;
 						}
@@ -213,7 +244,8 @@ CfgMaterial::CfgMaterial(rapidxml::xml_node<>* input_node, std::filesystem::path
 		}
 
 		if (!is_texture_valid) {
-			textures[i] = &(*default_textures)[i];
+			textures[i] = &((*default_textures)[i]);
+			std::cout << "Use default texture instead." << std::endl;
 		}
 	}
 }
@@ -225,12 +257,11 @@ void CfgMaterial::bind_textures(GLuint shader_program_id)
 
 		glActiveTexture(GL_TEXTURE0 + i); // = TEXTURE1 when i=1 and so on
 		glBindTexture(GL_TEXTURE_2D, textures[i]->texture_id);
-		// std::cout << "bind" << texture_ids[i] << std::endl;
 		glUniform1i(texture_location_in_shader, i);
 	}
 }
 
-Texture::Texture(std::string texture_rel_path, std::filesystem::path texture_abs_path, std::filesystem::path out_base_path, bool save_snowed_texture)
+Texture::Texture(std::string texture_rel_path, std::filesystem::path texture_abs_path, std::filesystem::path out_base_path, int type, bool save_snowed_texture)
 {
 	rel_path = texture_rel_path;
 	abs_path = texture_abs_path;
@@ -253,10 +284,22 @@ void Texture::load()
 {
 	if (is_loaded) return;
 	texture_id = dds_file_to_gl_texture(abs_path);
+
+	int width, height;
+	get_dimensions(texture_id, &width, &height);
+	snowed_texture_id = create_empty_texture(
+		width, height, GL_RGBA, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
+
 	is_loaded = true;
+}
+
+void Texture::cleanup()
+{
+	glDeleteTextures(1, &texture_id);
+	glDeleteTextures(1, &snowed_texture_id);
 }
 
 Texture::~Texture()
 {
-	glDeleteTextures(1, &texture_id);
+	cleanup();
 }

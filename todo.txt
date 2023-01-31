@@ -1,9 +1,9 @@
 - Make -d flag do something
 - Add regex filtering via CLI parameter
 - Add saving isometric renderings as CLI parameter
-- Adjust isometric rendering to size of building
-- Render after snow has been generated
+# Adjust isometric rendering to size of building
+# Render after snow has been generated
 # Don't output success message for every mipmap saved
 # Create "Texture" class
 # Debug residence_tier01_diff being incorrect
-- 
+- Do not generate snow on fragments were the geometry is steep (/vertical), but the normal map makes the fragment appear to be inclined almost horizontally
