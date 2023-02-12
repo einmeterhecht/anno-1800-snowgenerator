@@ -64,7 +64,10 @@ std::vector<Texture> load_default_textures()
 }
 
 CfgFile::CfgFile(std::filesystem::path input_filepath, std::vector<Texture>* default_textures, CliOptions cli_options) {
-	//std::wcout << L"Reading " << input_filepath << std::endl;
+	
+	if (!fs::exists(input_filepath)) {
+		throw snow_exception("The .cfg file does not exist.");
+	}
 
 	// Reading file to buffer copied from https://stackoverflow.com/a/29915752
 	std::ifstream xml_stream(input_filepath);
@@ -152,6 +155,10 @@ CfgModel::CfgModel(rapidxml::xml_node<>* input_node, std::filesystem::path data_
 	// This one is mainly for data/dlc09/graphics/buildings/residence/residence_tier05_01/residence_tier05_01_02.cfg
 	// which has a Model with an empty <FileName></FileName> and no Materials tag.
 	if (!rdm_filename.string().ends_with(".rdm")) throw snow_exception("FileName is not an RDM file");
+	if (cli_options.has_extracted_maindata_path && (!fs::exists(rdm_filename))) {
+		rdm_filename = fs::path(cli_options.extracted_maindata_path).append(relative_path);
+		std::cout << "Load mesh from extracted maindata: " << rdm_filename.string() << std::endl;
+	}
 
 	xml_node<>* materials_tag = input_node->first_node("Materials", 9);
 	for (xml_node<>* material_tag = materials_tag->first_node();
@@ -209,7 +216,7 @@ CfgMaterial::CfgMaterial(rapidxml::xml_node<>* input_node, std::filesystem::path
 			}
 
 			if (is_forbidden_texture(texture_rel_path)) {
-				std::cout << "Use default instead of blacklisted texture " << texture_rel_path << std::endl;
+				std::cout << "Texture is blacklisted: " << texture_rel_path << std::endl;
 			}
 			else {
 				std::replace(texture_rel_path.begin(), texture_rel_path.end(), '/', '\\');
@@ -238,6 +245,12 @@ CfgMaterial::CfgMaterial(rapidxml::xml_node<>* input_node, std::filesystem::path
 							textures[i] = &(all_textures->at(texture_rel_path));
 							is_texture_valid = true;
 						}
+						else {
+							std::cout << "Texture not found: " << texture_rel_path << std::endl;
+						}
+					}
+					else {
+						std::cout << "Texture not found: " << texture_rel_path << std::endl;
 					}
 				}
 			}
@@ -261,12 +274,15 @@ void CfgMaterial::bind_textures(GLuint shader_program_id)
 	}
 }
 
-Texture::Texture(std::string texture_rel_path, std::filesystem::path texture_abs_path, std::filesystem::path out_base_path, int type, bool save_snowed_texture)
+Texture::Texture(std::string texture_rel_path, std::filesystem::path texture_abs_path, std::filesystem::path out_base_path, int texture_type, bool texture_save_snowed_texture)
 {
 	rel_path = texture_rel_path;
 	abs_path = texture_abs_path;
 	out_path = backward_to_forward_slashes(fs::path(out_base_path).append(
 		rel_path.substr(0, rel_path.size() - 5)));
+
+	type = texture_type;
+	save_snowed_texture = texture_save_snowed_texture;
 
 	// Count mipmaps
 	std::string abs_path_until_mipmap_indication = abs_path.string().substr(0, abs_path.string().size() - 5);
@@ -288,7 +304,7 @@ void Texture::load()
 	int width, height;
 	get_dimensions(texture_id, &width, &height);
 	snowed_texture_id = create_empty_texture(
-		width, height, GL_RGBA, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
+		width, height, GL_RGBA, GL_NEAREST, GL_NEAREST, GL_REPEAT);
 
 	is_loaded = true;
 }

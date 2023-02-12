@@ -62,11 +62,26 @@ int main(int argc, char *argv[])
     CliOptions cli_options = CliOptions(argc, argv, std::filesystem::path(__argv[0]).parent_path());
 
     vector<std::filesystem::path> target_files;
-    if (cli_options.disable_filenamefilters) {
-        get_file_list(cli_options.dir_to_parse, &target_files, &ends_in_cfg);
+    if (cli_options.dir_to_parse.string().ends_with(".cfg")) {
+        target_files.push_back(fs::path(cli_options.dir_to_parse));
     }
     else {
-        get_file_list(cli_options.dir_to_parse, &target_files, &is_old_world_cfg);
+        try {
+            if (cli_options.disable_filenamefilters) {
+                get_file_list(cli_options.dir_to_parse, &target_files, &ends_in_cfg);
+            }
+            else {
+                get_file_list(cli_options.dir_to_parse, &target_files, &is_old_world_cfg);
+            }
+            std::cout << "Found " << target_files.size() << " files: " << endl;
+            for (int cfg_index = 0; cfg_index < target_files.size(); cfg_index++) {
+                 std::cout << target_files.at(cfg_index).string() << endl;
+            }
+        }
+        catch (std::filesystem::filesystem_error) {
+            std::cout << "Error while parsing " << cli_options.dir_to_parse << "" << endl;
+            if (!fs::exists(cli_options.dir_to_parse)) std::cout << "The specified directory does not exist." << endl;
+        }
     }
 
     GlStuff context_gl = GlStuff();
@@ -88,11 +103,6 @@ int main(int argc, char *argv[])
     context_gl.load_noise_texture(4096);
     if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while loading shaders & data" << endl;
 
-    std::cout << "Found " << target_files.size() << " files: " << endl;
-    for (int cfg_index = 0; cfg_index < target_files.size(); cfg_index++) {
-         std::cout << target_files.at(cfg_index).string() << endl;
-    }
-
     vector<std::filesystem::path> error_files;
     vector<Texture> default_textures = load_default_textures();
 
@@ -101,8 +111,21 @@ int main(int argc, char *argv[])
         std::cout << "\n\n\nCfg file " << cfg_index + 1 << " / " << target_files.size() << endl;
         std::cout << cfg_path << endl;
 
+        glfwSetWindowTitle(context_gl.window, target_files.at(cfg_index).filename().string().c_str());
+
         try {
             CfgFile cfg_file = CfgFile(cfg_path, &default_textures, cli_options);
+            
+            bool no_textures_to_save = true;
+            for (auto& [texture_rel_path, texture] : cfg_file.all_textures) {
+                if (texture.save_snowed_texture) no_textures_to_save = false;
+            }
+            
+            if (no_textures_to_save) {
+                std::cout << "No textures to generate snow for were found. Move on to next file." << endl;
+                continue;
+            }
+
             cfg_file.load_models_and_textures();
             if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while loading textures" << endl;
 
@@ -128,7 +151,7 @@ int main(int argc, char *argv[])
                         get_dimensions(cfg_material.textures[0]->texture_id, &width, &height);
                         // Create render target
                         rendered_snowmaps[texture_rel_path] = create_empty_texture(
-                            width, height, GL_RGB, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
+                            width, height, GL_RGB, GL_NEAREST, GL_NEAREST, GL_REPEAT);
                         framebuffer_ids[texture_rel_path] = create_framebuffer(1);
                         glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, rendered_snowmaps[texture_rel_path], 0);
                         is_framebuffer_ok();
@@ -145,7 +168,7 @@ int main(int argc, char *argv[])
 
                     //std::cout << "MATERIA" << endl;
 
-                    // Render a snowmap to rendered_snowmaps[texture_rel_path]
+                    // Render a snowmap to pre-existing rendered_snowmaps[texture_rel_path]
                     /*GLint old_framebuffer;
                     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &old_framebuffer);
                     if (old_framebuffer != framebuffer_ids[texture_rel_path]) {
@@ -271,6 +294,10 @@ int main(int argc, char *argv[])
                 } else if (texture.rel_path.find("default_model_") != string::npos) {
                     // std::cout << "Do not save the default texture " << cfg_constants::texture_names[k];
                 }
+                else if (!texture.save_snowed_texture) {
+                    std::cout << "Do not save vanilla texture " << texture.abs_path << std::endl;
+                    texture.is_snowed_version_saved = true;
+                }
                 else{
                     if (is_forbidden_texture(texture.rel_path)) {
                         // If filenamefilters are active, default textures are loaded instead of blacklisted ones.
@@ -298,12 +325,16 @@ int main(int argc, char *argv[])
             std::cout << "Damaged cfg file " << cfg_path << endl;
             error_files.push_back(cfg_path);
             std::cout << "Move on to next file" << endl;
-        }/*
+        }
         catch (exception exception) {
             std::cout << "Uncaught exception in cfg file " << cfg_path << endl;
             error_files.push_back(cfg_path);
             std::cout << "Move on to next file" << endl;
-        }*/
+        }
+        if (glfwWindowShouldClose(context_gl.window)) {
+            std::cout << "Window was closed by user. Quit process." << endl;
+            break;
+        }
     }
     std::cout << std::endl << "Done. "
         << target_files.size() << " files processed, "
@@ -317,8 +348,11 @@ int main(int argc, char *argv[])
     }
     context_gl.cleanup();
     glfwTerminate();
-    // Let the user press enter to close window
-    char* _ = new char[2];
-    std::cin.getline(_, 2);
-    delete[] _;
+    
+    if (!cli_options.no_prompt) {
+        // Let the user press enter to close window
+        char* _ = new char[2];
+        std::cin.getline(_, 2);
+        delete[] _;
+    }
 }

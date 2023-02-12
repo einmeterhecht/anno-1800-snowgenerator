@@ -20,4 +20,6 @@ public:
 
     bool save_png = false;
     bool save_dds = true;
+
+    bool no_prompt = false;
 };

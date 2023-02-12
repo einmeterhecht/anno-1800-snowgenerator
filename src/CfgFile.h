@@ -55,9 +55,10 @@ public:
 
 	bool is_loaded = false;
 	bool is_snow_generated = false;
+	bool save_snowed_texture = false;
 	bool is_snowed_version_saved = false;
 
-	Texture(std::string texture_rel_path, std::filesystem::path texture_abs_path, std::filesystem::path out_base_path, int type, bool save_snowed_texture);
+	Texture(std::string texture_rel_path, std::filesystem::path texture_abs_path, std::filesystem::path out_base_path, int texture_type, bool texture_save_snowed_texture);
 	void load();
 	void cleanup();
 	~Texture();

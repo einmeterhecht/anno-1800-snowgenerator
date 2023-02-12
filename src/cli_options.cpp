@@ -21,6 +21,8 @@ CliOptions::CliOptions(int argc, char* argv[], fs::path containing_dir) {
 	save_png = false;
 	save_dds = true;
 
+    no_prompt = false;
+
     // cout << "Command line arguments passed:" << endl;
     string last_word = "";
     for (int i = 1; i < argc; i++) {
@@ -41,6 +43,9 @@ CliOptions::CliOptions(int argc, char* argv[], fs::path containing_dir) {
         }
         else if ((arg == "--save_non_mod_textures") || (arg == "--save_vanilla")) {
             save_non_mod_textures = true;
+        }
+        else if ((arg == "--no_prompt") || (arg == "--noprompt")) {
+            no_prompt = true;
         }
         else if ((arg == "-o") || (arg == "-out_path") || (arg == "-output")) {
             last_word = "-o";
@@ -66,4 +71,5 @@ CliOptions::CliOptions(int argc, char* argv[], fs::path containing_dir) {
     if (has_extracted_maindata_path) cout << "-d " << extracted_maindata_path.string() << endl;
     if (disable_filenamefilters) cout << "--no_ff" << endl;
     if (atlas_mode) cout << "--atlas_mode" << endl;
+    if (no_prompt) cout << "--noprompt" << endl;
 }

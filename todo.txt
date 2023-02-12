@@ -1,9 +1,13 @@
-- Make -d flag do something
 - Add regex filtering via CLI parameter
 - Add saving isometric renderings as CLI parameter
+- Atlas mode
+- Do not generate snow when there are no textures who have to be saved
+# Current .cfg filename as window title
+# Add the option to pass a single .cfg file as cli parameter
 # Adjust isometric rendering to size of building
 # Render after snow has been generated
 # Don't output success message for every mipmap saved
 # Create "Texture" class
 # Debug residence_tier01_diff being incorrect
-- Do not generate snow on fragments were the geometry is steep (/vertical), but the normal map makes the fragment appear to be inclined almost horizontally
+# almost horizontally
+# D:/Lirvan/snow_for_mods/jje1000/[Ornamental] Red Tile Roof Building Variations GU16\data\moddinggraphics_3\buildings\special\palace\palace_corner\palace_corner.cfg

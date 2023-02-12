@@ -30,7 +30,7 @@ GlStuff::GlStuff(bool init) {
 
 	glfwGetFramebufferSize(window, &window_w, &window_h);
 	glViewport(0, 0, window_w, window_h);
-	glClearColor(0.9, 0.2, 0.2, 1.0);
+	glClearColor(0.1, 0.1, 0.4, 1.0);
 
 	if (glewInit() != GLEW_OK) {
 		fprintf(stderr, "Failed to initialize GLEW.");
