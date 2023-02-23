@@ -229,7 +229,7 @@ void gl_texture_to_dds_mipmaps(GLuint texture_id, std::filesystem::path filename
 {
 	// In case of errors: Do not throw an exception, but just return without saving the texture.
 	if (mipmap_count == 0) return;
-	std::cout << "Mipmap count: " << std::to_string(mipmap_count) << std::endl;
+	// std::cout << "Mipmap count: " << std::to_string(mipmap_count) << std::endl;
 
 	// Update the window from time to time (Otherwise it won't react for some seconds)
 	glfwPollEvents();

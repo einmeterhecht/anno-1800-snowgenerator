@@ -19,7 +19,7 @@ GlStuff::GlStuff(bool init) {
 
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	window = glfwCreateWindow(512, 512, "Window providing Context for GL", NULL, NULL);
+	window = glfwCreateWindow(800, 800, "Window providing Context for GL", NULL, NULL);
 	if (window == NULL) {
 		fprintf(stderr, "Failed to open GLFW window.");
 		glfwTerminate();
@@ -67,6 +67,20 @@ GLuint create_empty_texture(int width, int height, GLenum format, GLenum mag_fil
 	return texture_id;
 }
 
+GLuint create_empty_depth_texture(int width, int height) {
+	GLuint texture_id;
+	glGenTextures(1, &texture_id);
+	glBindTexture(GL_TEXTURE_2D, texture_id);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	return texture_id;
+}
+
 GLuint create_framebuffer(uint8_t number_of_drawbuffers) {
 	/*GLint max_viewport_size[2];
 	glGetIntegerv(GL_MAX_VIEWPORT_DIMS, &max_viewport_size[0]);
@@ -81,7 +95,8 @@ GLuint create_framebuffer(uint8_t number_of_drawbuffers) {
 		GL_COLOR_ATTACHMENT1,
 		GL_COLOR_ATTACHMENT2,
 		GL_COLOR_ATTACHMENT3};
-	glDrawBuffers(number_of_drawbuffers, draw_buffers);
+	if (number_of_drawbuffers > 0) glDrawBuffers(number_of_drawbuffers, draw_buffers);
+	else glDrawBuffer(GL_NONE);
 
 	return framebuffer_id;
 }

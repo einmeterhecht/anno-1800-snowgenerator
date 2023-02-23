@@ -9,6 +9,7 @@ inline const char* VERTEX_ATTRIBUTES = "PNGBTCCIIIIWWWW";
 #define MAX_VERTEX_ATTRIBUTES 15; // length of VERTEX_ATTRIBUTES
 
 GLuint create_empty_texture(int width, int height, GLenum format, GLenum mag_filter, GLenum min_filter, GLenum wrap_method);
+GLuint create_empty_depth_texture(int width, int height);
 void get_dimensions(GLuint texture_id, int* width, int* height);
 GLuint create_framebuffer(uint8_t number_of_drawbuffers);
 bool is_framebuffer_ok();

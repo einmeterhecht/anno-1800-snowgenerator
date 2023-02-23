@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     GlStuff context_gl = GlStuff();
     while (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while initializing" << endl;
     GLuint snow_program = compile_shaders_to_program(
-        texcoord_as_positon_2_vertexshader_code, snow_fragmentshader_code);
+        texcoord_as_positon_with_tangents_vertexshader_code, snow_fragmentshader_code);
     GLuint copy_texture_program = compile_shaders_to_program(
         texcoord_as_position_vertexshader_code, copy_from_texture_fragmentshader_code);
     GLuint combine_to_snowed_textures_program = compile_shaders_to_program(
@@ -110,8 +110,6 @@ int main(int argc, char *argv[])
         string cfg_path = target_files.at(cfg_index).string();
         std::cout << "\n\n\nCfg file " << cfg_index + 1 << " / " << target_files.size() << endl;
         std::cout << cfg_path << endl;
-
-        glfwSetWindowTitle(context_gl.window, target_files.at(cfg_index).filename().string().c_str());
 
         try {
             CfgFile cfg_file = CfgFile(cfg_path, &default_textures, cli_options);
@@ -136,7 +134,6 @@ int main(int argc, char *argv[])
 
             for (int i = 0; i < cfg_file.cfg_models.size(); i++) {
                 HardwareRdm& mesh = cfg_file.cfg_models[i].mesh;
-                //mesh.print_information();
                 for (int j = 0; j < mesh.materials_count; j++) {
                     int cfg_material_index = min(mesh.materials[j].index, cfg_file.cfg_models[i].cfg_materials.size() - 1);
                     CfgMaterial& cfg_material = cfg_file.cfg_models[i].cfg_materials[cfg_material_index];
@@ -149,11 +146,19 @@ int main(int argc, char *argv[])
                     // GLuint old_render_target_texture = render_target_texture;
                     if (!rendered_snowmaps.contains(texture_rel_path)) {
                         get_dimensions(cfg_material.textures[0]->texture_id, &width, &height);
+                        
                         // Create render target
-                        rendered_snowmaps[texture_rel_path] = create_empty_texture(
-                            width, height, GL_RGB, GL_NEAREST, GL_NEAREST, GL_REPEAT);
-                        framebuffer_ids[texture_rel_path] = create_framebuffer(1);
-                        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, rendered_snowmaps[texture_rel_path], 0);
+                        rendered_snowmaps[texture_rel_path] = create_empty_depth_texture(width, height);
+                        framebuffer_ids[texture_rel_path] = create_framebuffer(0);
+                        
+                        GLuint depthrenderbuffer;
+                        glGenRenderbuffers(1, &depthrenderbuffer);
+                        glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
+                        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+                        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
+                        
+                        glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, rendered_snowmaps[texture_rel_path], 0);
+                        
                         is_framebuffer_ok();
 
                         // Clear snowmap
@@ -180,6 +185,13 @@ int main(int argc, char *argv[])
 
                     // Render snowmap
                     glUseProgram(snow_program);
+                    glEnable(GL_DEPTH_TEST);
+                    glDepthFunc(GL_GREATER);
+                    
+                    /*glEnable(GL_BLEND);
+                    glBlendFunc(GL_SRC_COLOR, GL_SRC_COLOR);
+                    glBlendEquation(GL_MAX);*/
+
                     cfg_material.bind_textures(snow_program);
 
                     mesh.bind_buffers();
@@ -197,8 +209,10 @@ int main(int argc, char *argv[])
                 }
             }
             for (int i = 0; i < cfg_file.cfg_models.size(); i++) {
+                HardwareRdm& mesh = cfg_file.cfg_models[i].mesh;
                 for (int j = 0; j < cfg_file.cfg_models[i].cfg_materials.size(); j++) {
-                    CfgMaterial& cfg_material = cfg_file.cfg_models[i].cfg_materials[j];
+                    int cfg_material_index = min(mesh.materials[j].index, cfg_file.cfg_models[i].cfg_materials.size() - 1);
+                    CfgMaterial& cfg_material = cfg_file.cfg_models[i].cfg_materials[cfg_material_index];
                     
                     bool all_textures_have_snow = true;
                     for (int k = 0; k < texture_types_count && all_textures_have_snow; k++)
@@ -221,6 +235,8 @@ int main(int argc, char *argv[])
 
                     glViewport(0, 0, width, height);
                     glUseProgram(combine_to_snowed_textures_program);
+                    glDisable(GL_BLEND);
+
                     cfg_material.bind_textures(combine_to_snowed_textures_program);
 
                     GLuint texture_location_in_shader = glGetUniformLocation(combine_to_snowed_textures_program, "snowmap");
@@ -250,6 +266,8 @@ int main(int argc, char *argv[])
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glViewport(0, 0, context_gl.window_w, context_gl.window_h);
             glUseProgram(render_isometric_program);
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_LESS);
             
             for (int i = 0; i < cfg_file.cfg_models.size(); i++) {
                 HardwareRdm& mesh = cfg_file.cfg_models[i].mesh;
@@ -259,14 +277,12 @@ int main(int argc, char *argv[])
                     
                     GLuint texture_location_in_shader = glGetUniformLocation(render_isometric_program, "diff");
                     glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, cfg_file.cfg_models[i].cfg_materials[j].textures[0]->snowed_texture_id);
+                    glBindTexture(GL_TEXTURE_2D, cfg_material.textures[0]->snowed_texture_id);
                     glUniform1i(texture_location_in_shader, 0);
 
                     mesh.bind_buffers();
                     context_gl.bind_vertexformat(cfg_material.vertex_format, mesh.vertices_size);
 
-                    glEnable(GL_DEPTH_TEST);
-                    glDepthFunc(GL_LESS);
                     GLuint matrix_location_in_shader = glGetUniformLocation(render_isometric_program, "transformation_matrix");
                     load_isometric_matrix(matrix_location_in_shader, 1.f / cfg_file.mesh_radius);
 
@@ -283,6 +299,9 @@ int main(int argc, char *argv[])
                     glfwPollEvents();
                 }
             }
+
+            // Set Window title to the filename of the .cfg currently displayed
+            glfwSetWindowTitle(context_gl.window, target_files.at(cfg_index).filename().string().c_str());
 
             for (auto& [texture_rel_path, texture] : cfg_file.all_textures) {
                 if (texture.type == 1) {
