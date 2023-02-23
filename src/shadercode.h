@@ -15,7 +15,7 @@ void main() {
 	gl_Position =  vec4(vertex_t*2.0 - vec2(1.0, 1.0), 0.5, 1.); //vec4(vertex_p.x*0.6, vertex_p.y*0.6, 0.5, 1.);
     out_t = vertex_t;
 })<shadercode>";
-const std::string texcoord_as_positon_2_vertexshader_code = R"<shadercode>(
+const std::string texcoord_as_positon_with_tangents_vertexshader_code = R"<shadercode>(
 #version 330 core
 
 // Vertex Attributes
@@ -34,7 +34,10 @@ out mat3 ngb_matrix; // normal-tangent-bitangent
 void main() {
 	// Output position is texture coordinate
     vec2 uv_as_st = vec2(vertex_t.x, 1 - vertex_t.y);
-	gl_Position = vec4(vertex_t*2.0 - vec2(1.0, 1.0), 0.5, 1.); //vec4(vertex_p.x*0.6, vertex_p.y*0.6, 0.5, 1.);
+    gl_Position = vec4(fract(vertex_t)*2.0 - vec2(1.0, 1.0), 0.5, 1.);
+	/*gl_Position.x = (vertex_t.x - floor(vertex_t.x));// * 2.0 - 1.0;
+    gl_Position.y = (vertex_t.y - floor(vertex_t.y));// * 2.0 - 1.0;
+    gl_Position.z = 0.5;*/
 	
     ngb_matrix = mat3(vertex_n * 2.0 - vec3(1., 1., 1.),
                       vertex_g * 2.0 - vec3(1., 1., 1.),
@@ -48,8 +51,11 @@ in vec2 out_t;
 
 layout(location = 0) out vec3 color; // Special! Used for saving the computed texture
 
+out float gl_FragDepth;
+
 void main() {
     color = vec3(0., 0., 0.);
+    gl_FragDepth = 0.;
 })<shadercode>";
 
 const std::string snow_fragmentshader_code = R"<shadercode>(
@@ -57,7 +63,9 @@ const std::string snow_fragmentshader_code = R"<shadercode>(
 in vec2 out_t;
 in mat3 ngb_matrix;
 
-layout(location = 0) out vec3 color; // Special! Used for saving the computed texture
+// layout(location = 0) out vec3 color; // Special! Used for saving the computed texture
+
+out float gl_FragDepth;
 
 uniform sampler2D diff_texture;
 uniform sampler2D norm_texture;
@@ -67,8 +75,8 @@ void main() {
     float geometry_normal_y_component = ngb_matrix[0][1];
     if (geometry_normal_y_component < 0.3) {
         // Do not generate snow where the geometry is steep
-        // On the upper edge of bricks, the normal map makes the fragments appear inclined horizontally.
-        color = vec3(0., 0, 0.5);
+        // On the upper edge of bricks, the normal map would make the fragments appear inclined horizontally.
+        gl_FragDepth = 0.; //color = vec3(0., 0, 0.5);
         return;
     }
     
@@ -88,7 +96,7 @@ void main() {
         snow_likeliness = 0.;
     }
     // Save snow likeliness to texture. Only one channel needed.
-    color = vec3(snow_likeliness, 0., 0.5);
+    gl_FragDepth = snow_likeliness;//  color = vec3(snow_likeliness, 0., 0.);
     //color = (norm_vector + vec3(1., 1., 1.) ) * 0.5;
     //color = vec3((vertical_component + 1.0) * 0.5, (vertical_component + 1.0) * 0.5, 1.0);
     //color = (normalmap_vector + vec3(1., 1., 1.) ) * 0.5;
@@ -151,7 +159,7 @@ void main() {
             diff_color = clamp(vec4(0.755 + snow_offset, 0.791 + snow_offset, 0.806 + snow_offset, 1.), 0., 1.);
         }
         else{
-            // The final color is mixted from a (global constant) snow color
+            // The final color is mixed from a (global constant) snow color
             // and some remainders of the original texture
             float snow_color_part = (0.5 + snow_likeliness * 0.5);
             float orig_color_part = 1. - snow_color_part;
