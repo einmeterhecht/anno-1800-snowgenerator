@@ -20,6 +20,7 @@ CliOptions::CliOptions(int argc, char* argv[], fs::path containing_dir) {
 
 	save_png = false;
 	save_dds = true;
+    save_renderings = false;
 
     no_prompt = false;
 
@@ -40,6 +41,9 @@ CliOptions::CliOptions(int argc, char* argv[], fs::path containing_dir) {
         else if ((arg == "--only_png") || (arg == "--onlypng")) {
             save_png = true;
             save_dds = false;
+        }
+        else if (arg == "--save_renderings") {
+            save_renderings = true;
         }
         else if ((arg == "--save_non_mod_textures") || (arg == "--save_vanilla")) {
             save_non_mod_textures = true;

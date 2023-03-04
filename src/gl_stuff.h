@@ -5,6 +5,9 @@
 #include "../external/glew-2.2.0/include/GL/glew.h"
 #include "../external/glfw-3.3.6/include/GLFW/glfw3.h"
 
+inline const int WINDOW_WIDTH = 800;
+inline const int WINDOW_HEIGHT = 800;
+
 inline const char* VERTEX_ATTRIBUTES = "PNGBTCCIIIIWWWW";
 #define MAX_VERTEX_ATTRIBUTES 15; // length of VERTEX_ATTRIBUTES
 

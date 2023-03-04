@@ -38,6 +38,7 @@ namespace cfg_constants {
 }
 std::filesystem::path find_datapath(std::filesystem::path path_into_data);
 
+std::string backward_to_forward_slashes(std::string original);
 std::filesystem::path backward_to_forward_slashes(std::filesystem::path original);
 
 class Texture

@@ -1,7 +1,8 @@
 #pragma once
 
 #include <string>
-const std::string texcoord_as_position_vertexshader_code = R"<shadercode>(
+
+const std::string empty_vertexshader_code = R"<shadercode>(
 #version 330 core
 
 // Vertex Attributes
@@ -12,9 +13,25 @@ layout(location = 4) in vec2 vertex_t;
 out vec2 out_t;
 
 void main() {
-	gl_Position =  vec4(vertex_t*2.0 - vec2(1.0, 1.0), 0.5, 1.); //vec4(vertex_p.x*0.6, vertex_p.y*0.6, 0.5, 1.);
+	gl_Position =  vec4(vertex_p, 1.);
     out_t = vertex_t;
 })<shadercode>";
+
+const std::string vertically_flip_position_vertexshader_code = R"<shadercode>(
+#version 330 core
+
+// Vertex Attributes
+layout(location = 0) in vec3 vertex_p;
+layout(location = 4) in vec2 vertex_t;
+
+// Output data ; will be interpolated for each fragment.
+out vec2 out_t;
+
+void main() {
+	gl_Position =  vec4(vertex_p * vec3(1., -1., 1.), 1.); // Scale y by -1
+    out_t = vertex_t;
+})<shadercode>";
+
 const std::string texcoord_as_positon_with_tangents_vertexshader_code = R"<shadercode>(
 #version 330 core
 
@@ -33,19 +50,15 @@ out mat3 ngb_matrix; // normal-tangent-bitangent
 
 void main() {
 	// Output position is texture coordinate
-    vec2 uv_as_st = vec2(vertex_t.x, 1 - vertex_t.y);
     gl_Position = vec4(fract(vertex_t)*2.0 - vec2(1.0, 1.0), 0.5, 1.);
-	/*gl_Position.x = (vertex_t.x - floor(vertex_t.x));// * 2.0 - 1.0;
-    gl_Position.y = (vertex_t.y - floor(vertex_t.y));// * 2.0 - 1.0;
-    gl_Position.z = 0.5;*/
 	
     ngb_matrix = mat3(vertex_n * 2.0 - vec3(1., 1., 1.),
                       vertex_g * 2.0 - vec3(1., 1., 1.),
                       vertex_b * 2.0 - vec3(1., 1., 1.));
-    out_t = vertex_t;//uv_as_st;
+    out_t = vertex_t;
 })<shadercode>";
 
-const std::string clear_snowmap_fragmentshader_code= R"<shadercode>(
+const std::string clear_snowmap_fragmentshader_code = R"<shadercode>(
 #version 330 core
 in vec2 out_t;
 
@@ -97,10 +110,8 @@ void main() {
     }
     // Save snow likeliness to texture. Only one channel needed.
     gl_FragDepth = snow_likeliness;//  color = vec3(snow_likeliness, 0., 0.);
-    //color = (norm_vector + vec3(1., 1., 1.) ) * 0.5;
-    //color = vec3((vertical_component + 1.0) * 0.5, (vertical_component + 1.0) * 0.5, 1.0);
-    //color = (normalmap_vector + vec3(1., 1., 1.) ) * 0.5;
 })<shadercode>";
+
 const std::string copy_from_texture_fragmentshader_code = R"<shadercode>(
 #version 330 core
 in vec2 out_t;
@@ -173,7 +184,7 @@ void main() {
 })<shadercode>";
 
 
-const std::string simple_diff_fragmentshader_code = R"<shadercode>(
+const std::string simple_diff_to_screen_fragmentshader_code = R"<shadercode>(
 #version 330 core
 in vec2 out_t;
 uniform sampler2D diff_texture;
@@ -181,6 +192,16 @@ out vec3 color;
 
 void main() {
     color.rgb = texture2D(diff_texture, out_t).rgb;
+})<shadercode>";
+
+const std::string simple_diff_to_texture_fragmentshader_code = R"<shadercode>(
+#version 330 core
+in vec2 out_t;
+uniform sampler2D diff_texture;
+layout(location = 0) out vec3 diff_output;
+
+void main() {
+    diff_output = texture2D(diff_texture, out_t).rgb;
 })<shadercode>";
 
 

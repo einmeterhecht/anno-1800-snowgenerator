@@ -20,6 +20,7 @@ public:
 
     bool save_png = false;
     bool save_dds = true;
+    bool save_renderings = false;
 
     bool no_prompt = false;
 };

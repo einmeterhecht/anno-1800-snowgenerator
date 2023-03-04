@@ -17,19 +17,19 @@ using namespace rapidxml;
 namespace fs = std::filesystem;
 
 fs::path find_datapath(fs::path path_into_data) {
-	fs::path a_filepath_containing_datapath = path_into_data;
+	fs::path filepath_containing_datapath = path_into_data;
 	bool found_datapath = false;
-	while (a_filepath_containing_datapath.has_parent_path()) {
-		if (a_filepath_containing_datapath.filename() == "data") {
-			return a_filepath_containing_datapath.parent_path();
+	while (filepath_containing_datapath.has_parent_path()) {
+		if (filepath_containing_datapath.filename() == "data") {
+			return filepath_containing_datapath.parent_path();
 		}
-		a_filepath_containing_datapath = a_filepath_containing_datapath.parent_path();
+		filepath_containing_datapath = filepath_containing_datapath.parent_path();
 	}
 	return path_into_data;
 }
 
-fs::path backward_to_forward_slashes(fs::path original) {
-	std::string target = original.string();
+std::string backward_to_forward_slashes(std::string original) {
+	std::string target = std::string(original);
 	// https://stackoverflow.com/a/20412841
 	int n = 0;
 	while ((n = target.find("\\\\", n)) != std::string::npos) {
@@ -41,7 +41,11 @@ fs::path backward_to_forward_slashes(fs::path original) {
 		target.replace(n, 1, "/");
 		n++;
 	}
-	return fs::path(target);
+	return target;
+}
+
+fs::path backward_to_forward_slashes(fs::path original) {
+	return fs::path(backward_to_forward_slashes(original.string()));
 }
 
 std::vector<Texture> load_default_textures()

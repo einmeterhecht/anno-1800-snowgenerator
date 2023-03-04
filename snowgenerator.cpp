@@ -37,6 +37,8 @@ What this program does:
         }
     - The output textures are stored as .dds files; including as many mipmaps as the original had. The compression of the textures to BC7_UNORM takes extremely long.
 - When done, print a list of .cfg files that were skipped
+
+Thanks to https://www.opengl-tutorial.org/
 */
 
 #include <iostream>
@@ -89,25 +91,43 @@ int main(int argc, char *argv[])
     GLuint snow_program = compile_shaders_to_program(
         texcoord_as_positon_with_tangents_vertexshader_code, snow_fragmentshader_code);
     GLuint copy_texture_program = compile_shaders_to_program(
-        texcoord_as_position_vertexshader_code, copy_from_texture_fragmentshader_code);
+        empty_vertexshader_code, copy_from_texture_fragmentshader_code);
     GLuint combine_to_snowed_textures_program = compile_shaders_to_program(
-        texcoord_as_position_vertexshader_code, combine_to_snowed_textures_fragmentshader_code);
+        empty_vertexshader_code, combine_to_snowed_textures_fragmentshader_code);
     GLuint clear_snowmap_program = compile_shaders_to_program(
-        texcoord_as_position_vertexshader_code, clear_snowmap_fragmentshader_code);
+        empty_vertexshader_code, clear_snowmap_fragmentshader_code);
     GLuint render_isometric_program = compile_shaders_to_program(
-        simple_matrix_transform_vertexshader_code, simple_diff_fragmentshader_code);
+        simple_matrix_transform_vertexshader_code, simple_diff_to_texture_fragmentshader_code);
+    GLuint texture_to_screen_program = compile_shaders_to_program(
+        vertically_flip_position_vertexshader_code, simple_diff_to_screen_fragmentshader_code);
 
     while (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while compiling shaders" << endl;
 
     context_gl.load_square_vertexbuffer();
-    context_gl.load_noise_texture(4096);
+    context_gl.load_noise_texture(1024);
     if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while loading shaders & data" << endl;
 
     vector<std::filesystem::path> error_files;
     vector<Texture> default_textures = load_default_textures();
+    
+    GLuint isometric_framebuffer = create_framebuffer(1);
+
+    GLuint isometric_rendering_texture = create_empty_texture(
+        WINDOW_WIDTH, WINDOW_HEIGHT, GL_RGB, GL_NEAREST, GL_NEAREST, GL_CLAMP_TO_EDGE);
+    
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, isometric_rendering_texture, 0);
+
+    GLuint isometric_depthrenderbuffer;
+    glGenRenderbuffers(1, &isometric_depthrenderbuffer);
+    glBindRenderbuffer(GL_RENDERBUFFER, isometric_depthrenderbuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, WINDOW_WIDTH, WINDOW_HEIGHT);
+    
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, isometric_depthrenderbuffer);
+
+    is_framebuffer_ok();
 
     for (int cfg_index = 0; cfg_index < target_files.size(); cfg_index++) {
-        string cfg_path = target_files.at(cfg_index).string();
+        string cfg_path = backward_to_forward_slashes(target_files.at(cfg_index).string());
         std::cout << "\n\n\nCfg file " << cfg_index + 1 << " / " << target_files.size() << endl;
         std::cout << cfg_path << endl;
 
@@ -171,7 +191,7 @@ int main(int argc, char *argv[])
                         get_dimensions(rendered_snowmaps[texture_rel_path], &width, &height);
                     }
 
-                    //std::cout << "MATERIA" << endl;
+                    // ATLAS MODE
 
                     // Render a snowmap to pre-existing rendered_snowmaps[texture_rel_path]
                     /*GLint old_framebuffer;
@@ -263,24 +283,26 @@ int main(int argc, char *argv[])
 
             // Render model to screen so that the user has something to look at
             
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glViewport(0, 0, context_gl.window_w, context_gl.window_h);
+            glBindFramebuffer(GL_FRAMEBUFFER, isometric_framebuffer);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glViewport(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+
             glUseProgram(render_isometric_program);
             glEnable(GL_DEPTH_TEST);
             glDepthFunc(GL_LESS);
             
             for (int i = 0; i < cfg_file.cfg_models.size(); i++) {
                 HardwareRdm& mesh = cfg_file.cfg_models[i].mesh;
+                mesh.bind_buffers();
                 for (int j = 0; j < mesh.materials_count; j++) {
                     int cfg_material_index = min(mesh.materials[j].index, cfg_file.cfg_models[i].cfg_materials.size() - 1);
                     CfgMaterial& cfg_material = cfg_file.cfg_models[i].cfg_materials[cfg_material_index];
                     
-                    GLuint texture_location_in_shader = glGetUniformLocation(render_isometric_program, "diff");
+                    GLuint texture_location_in_shader = glGetUniformLocation(render_isometric_program, "diff_texture");
                     glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, cfg_material.textures[0]->snowed_texture_id);
                     glUniform1i(texture_location_in_shader, 0);
-
-                    mesh.bind_buffers();
+                    
                     context_gl.bind_vertexformat(cfg_material.vertex_format, mesh.vertices_size);
 
                     GLuint matrix_location_in_shader = glGetUniformLocation(render_isometric_program, "transformation_matrix");
@@ -294,14 +316,33 @@ int main(int argc, char *argv[])
                     );
 
                     if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while rendering" << endl;
-
-                    glfwSwapBuffers(context_gl.window);
-                    glfwPollEvents();
                 }
             }
 
+            if (cli_options.save_renderings) {
+                string cfg_rel_path = cfg_path.substr(cfg_path.find("/data/"));
+                fs::path rendering_out_path = fs::path(cli_options.out_path).append("debug_renderings/").concat(cfg_rel_path.substr(0, cfg_rel_path.length() - 4));
+                gl_texture_to_png_file(isometric_rendering_texture, rendering_out_path, true);
+            }
+
+            glUseProgram(texture_to_screen_program);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glDisable(GL_DEPTH_TEST);
+
+            GLuint texture_location_in_shader = glGetUniformLocation(render_isometric_program, "diff_texture");
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, isometric_rendering_texture);
+            glUniform1i(texture_location_in_shader, 0);
+
+            context_gl.bind_square_buffers();
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)0);
+            context_gl.unbind_square_buffers();
+
             // Set Window title to the filename of the .cfg currently displayed
             glfwSetWindowTitle(context_gl.window, target_files.at(cfg_index).filename().string().c_str());
+            glfwSwapBuffers(context_gl.window);
+            glfwPollEvents();
+
 
             for (auto& [texture_rel_path, texture] : cfg_file.all_textures) {
                 if (texture.type == 1) {
