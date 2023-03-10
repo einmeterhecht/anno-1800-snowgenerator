@@ -13,7 +13,7 @@ https://github.com/opengl-tutorials/ogl/tree/master/tutorial14_render_to_texture
 
 GlStuff::GlStuff(bool init) {
 	glfwInit();
-	glfwWindowHint(GLFW_SAMPLES, 16);
+	glfwWindowHint(GLFW_SAMPLES, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 

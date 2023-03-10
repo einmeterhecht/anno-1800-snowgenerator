@@ -38,6 +38,7 @@ namespace cfg_constants {
 }
 std::filesystem::path find_datapath(std::filesystem::path path_into_data);
 
+std::string remove_whitespaces_at_end(std::string original);
 std::string backward_to_forward_slashes(std::string original);
 std::filesystem::path backward_to_forward_slashes(std::filesystem::path original);
 
@@ -51,8 +52,8 @@ public:
 	int type; // 0=diffuse; 1=normal; 2=metallic
 	
 	size_t mipmap_count;
-	GLuint texture_id;
-	GLuint snowed_texture_id;
+	GLuint texture_id = 0;
+	GLuint snowed_texture_id = 0;
 
 	bool is_loaded = false;
 	bool is_snow_generated = false;

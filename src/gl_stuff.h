@@ -5,6 +5,8 @@
 #include "../external/glew-2.2.0/include/GL/glew.h"
 #include "../external/glfw-3.3.6/include/GLFW/glfw3.h"
 
+inline const int ISOMETRIC_RENDERING_WIDTH = 1600;
+inline const int ISOMETRIC_RENDERING_HEIGHT = 1600;
 inline const int WINDOW_WIDTH = 800;
 inline const int WINDOW_HEIGHT = 800;
 

@@ -147,11 +147,12 @@
     <ClCompile Include="src\shaders.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cli_options.h" />
     <ClInclude Include="src\CfgFile.h" />
+    <ClInclude Include="src\cli_options.h" />
     <ClInclude Include="src\dds2gl.h" />
     <ClInclude Include="src\filelist.h" />
     <ClInclude Include="src\gl_stuff.h" />
+    <ClInclude Include="src\licenses.h" />
     <ClInclude Include="src\matrix2gl.h" />
     <ClInclude Include="src\rdm2gl.h" />
     <ClInclude Include="src\shadercode.h" />

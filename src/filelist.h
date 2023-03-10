@@ -46,13 +46,14 @@ const inline char* blacklist[] = {
 	"[Winter]", // Don't generate snow twice (CFGs for test purposes in the output directory)
 };
 
-#define TEXTURE_BLACKLIST_SIZE 4
+#define TEXTURE_BLACKLIST_SIZE 5
 const inline char* texture_blacklist[] = {
 	"atlas", //"data/graphics/props/shared_textures/prop_atlas_4k",//
 	"quay_system",
 	"data/graphics/buildings/3rd_party/3rd_party_06/maps/3rd_party_06_", //Old Nate
 	"bridges",
 	"_ground"
+	// "/palace_roof_" // Generates incorrect snow in jje1000s mods due to texcoords outside [0., 1.]. Filter in order to improve performance.
 	//"data/graphics/ui/3d_objects/world_map/maps/afric", //(sic)
     //"data/graphics/ui/3d_objects/world_map/maps/c",
 	//"data/graphics/ui/3d_objects/world_map/maps/polar",

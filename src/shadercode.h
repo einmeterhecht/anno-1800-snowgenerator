@@ -58,25 +58,10 @@ void main() {
     out_t = vertex_t;
 })<shadercode>";
 
-const std::string clear_snowmap_fragmentshader_code = R"<shadercode>(
-#version 330 core
-in vec2 out_t;
-
-layout(location = 0) out vec3 color; // Special! Used for saving the computed texture
-
-out float gl_FragDepth;
-
-void main() {
-    color = vec3(0., 0., 0.);
-    gl_FragDepth = 0.;
-})<shadercode>";
-
 const std::string snow_fragmentshader_code = R"<shadercode>(
 #version 330 core
 in vec2 out_t;
 in mat3 ngb_matrix;
-
-// layout(location = 0) out vec3 color; // Special! Used for saving the computed texture
 
 out float gl_FragDepth;
 
@@ -99,17 +84,13 @@ void main() {
     normalmap_vector.x = 1 - normalmap_vector.y * normalmap_vector.y - normalmap_vector.z * normalmap_vector.z;
     vec3 norm_vector = ngb_matrix * normalmap_vector;
 
-    // Calculate the likeliness of snow on this fragment, depending only on its inclination
-    // With regards to the y-component of norm_vector:
-    // Below 0.4  -> No snow
-    // 0.4 to 0.8 -> Interpolate linearly
-    // 0.8 to 1.0 -> Always snow
-    float snow_likeliness = clamp((norm_vector.y-0.4)*2.5, 0., 1.);
+    float normal_y = clamp(norm_vector.y, 0., 0.95);
     if (texture2D(diff_texture, out_t).a < 0.1) {
-        snow_likeliness = 0.;
+        // No snow on transparent parts
+        normal_y = 0.;
     }
-    // Save snow likeliness to texture. Only one channel needed.
-    gl_FragDepth = snow_likeliness;//  color = vec3(snow_likeliness, 0., 0.);
+    // Save normal_y to texture. Only one channel needed.
+    gl_FragDepth = normal_y;
 })<shadercode>";
 
 const std::string copy_from_texture_fragmentshader_code = R"<shadercode>(
@@ -119,8 +100,7 @@ uniform sampler2D diff_texture;
 layout(location = 0) out vec4 frag_color;
 
 void main() {
-    vec3 diff_color = texture2D(diff_texture, out_t).rgb;
-    frag_color.rgb = diff_color;
+    frag_color = texture2D(diff_texture, out_t);
 })<shadercode>";
 
 
@@ -133,53 +113,54 @@ uniform sampler2D snowmap;
 uniform sampler2D noise;
 
 uniform sampler2D diff_texture;
-uniform sampler2D norm_texture;
 uniform sampler2D metallic_texture;
 
 // Output targets
 layout(location = 0) out vec4 diff_output;
-layout(location = 1) out vec4 normal_output;
 layout(location = 2) out vec4 metallic_output;
 
 void main() {
-    ivec2 tex_coord = ivec2(round(out_t * vec2(textureSize(diff_texture, 0))));
-    vec4 diff_color     = texture2D(diff_texture, out_t);
-    vec4 norm_color     = texture2D(norm_texture, out_t);
+    ivec2 tex_coord = ivec2(floor(out_t * vec2(textureSize(diff_texture, 0))));
+    vec4 diff_color     = texelFetch(diff_texture, tex_coord + ivec2(1., 0.), 0);
     vec4 metallic_color = texture2D(metallic_texture, out_t);
 
-    float noise_value = texture2D(noise, out_t).r;
+    float noise_value = texture2D(noise, out_t*4.).r;
 
-    float snow_likeliness = 0;
-    for (int x_off=-1; x_off<2; x_off++) {
-        for (int y_off=-1; y_off<2; y_off++) {
-            float new_color = texelFetch(snowmap, tex_coord + ivec2(x_off, y_off), 0).r;
-            if (new_color > snow_likeliness) {
-                snow_likeliness = (snow_likeliness + new_color) / 2.;
+    float normal_y = 0.;
+    if (texture2D(snowmap, out_t).r < 0.98) { // snowmap is 1 at the parts not used by the mesh
+        for (int x_off=-1; x_off<2; x_off++) {
+            for (int y_off=-1; y_off<2; y_off++) {
+                float new_color = texelFetch(snowmap, tex_coord + ivec2(x_off, y_off), 0).r;
+                if (new_color > normal_y && new_color < 0.98) {
+                    normal_y = (normal_y + new_color) / 2.;
+                }
             }
         }
     }
 
+    // Calculate the likeliness of snow on this fragment, depending only on its inclination
+    // With regards to the y-component of norm_vector:
+    // Below 0.4  -> No snow
+    // 0.4 to 0.8 -> Interpolate linearly
+    // 0.8 to 1.0 -> Always snow
 
-    if (snow_likeliness > noise_value || snow_likeliness > 0.9) {
+    // Make sure snow is not the same everywhere
+    if (normal_y > 0.8) {
+        // Snow covers original texture entirely
+        float snow_offset = (noise_value - 0.5) * 0.0625;
+        diff_color = clamp(vec4(0.755 + snow_offset, 0.791 + snow_offset, 0.806 + snow_offset, 1.), 0., 1.);
         metallic_color.rgb = vec3(0., 0., 0.);
-        if (snow_likeliness > 0.9) {
-            // Snow covers original texture entirely
-
-            // Make sure snow is not the same everywhere
-            float snow_offset = (noise_value - 0.5) * 0.0625;
-            diff_color = clamp(vec4(0.755 + snow_offset, 0.791 + snow_offset, 0.806 + snow_offset, 1.), 0., 1.);
-        }
-        else{
-            // The final color is mixed from a (global constant) snow color
-            // and some remainders of the original texture
-            float snow_color_part = (0.5 + snow_likeliness * 0.5);
-            float orig_color_part = 1. - snow_color_part;
-            diff_color = vec4(0.755, 0.791, 0.806, 1.) * snow_color_part + diff_color * orig_color_part;
-        }
+    }
+    else if (normal_y > 0.3) {
+        // The final color is mixed from a (global constant) snow color
+        // and some remainders of the original texture
+        float snow_color_part = clamp((normal_y-0.4)*5. - noise_value*1., 0., 1.);
+        float orig_color_part = 1. - snow_color_part;
+        diff_color = vec4(0.755, 0.791, 0.806, 1.) * snow_color_part + diff_color * orig_color_part;
+        metallic_color.rgb = metallic_color.rgb * orig_color_part;
     }
     
     diff_output     = diff_color;
-    normal_output   = norm_color;
     metallic_output = metallic_color; 
 })<shadercode>";
 
@@ -201,7 +182,9 @@ uniform sampler2D diff_texture;
 layout(location = 0) out vec3 diff_output;
 
 void main() {
-    diff_output = texture2D(diff_texture, out_t).rgb;
+    vec4 diff_color = texture2D(diff_texture, out_t);
+    if (diff_color.a == 0.) discard;
+    diff_output = diff_color.rgb;//vec3(diff_color.a, diff_color.a, diff_color.a);//
 })<shadercode>";
 
 

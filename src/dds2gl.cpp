@@ -146,23 +146,17 @@ GLuint dds_file_to_gl_texture(std::wstring dds_filepath) {
 	return 0;
 }
 
-
-int gl_texture_to_png_file(GLuint texture_id, std::filesystem::path filename, boolean append_extension)
-{
-    if (append_extension) {
-		if (!(filename.string().ends_with(".png") || filename.string().ends_with(".PNG"))) {
-			filename = filename.concat(".png");
-		}
-	}
-
-	glBindTexture(GL_TEXTURE_2D, texture_id);
+DirectX::Image gl_texture_to_dx_image(GLuint texture_id) {
+    glBindTexture(GL_TEXTURE_2D, texture_id);
 
 	int width, height;
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
 	if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while trying to get texture informations" << std::endl;
 	uint32_t pixel_count = width * height;
+
 	uint8_t* image_buffer = new uint8_t[pixel_count * 4];
+
 	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_buffer);
 	if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while trying to get texture data" << std::endl;
 
@@ -173,11 +167,13 @@ int gl_texture_to_png_file(GLuint texture_id, std::filesystem::path filename, bo
 	image.format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	image.rowPitch = image.width * 4;
 	image.slicePitch = pixel_count * 4;
+	return image;
+}
 
-	std::filesystem::create_directories(filename.parent_path());
+int save_dx_image_to_file(DirectX::Image image, GUID wic_codec, std::filesystem::path filename) {
+    std::filesystem::create_directories(filename.parent_path());
 	
-	long hr = DirectX::SaveToWICFile(image, DirectX::WIC_FLAGS_NONE, DirectX::GetWICCodec(DirectX::WIC_CODEC_PNG), filename.c_str());
-	delete[] image.pixels;
+	long hr = DirectX::SaveToWICFile(image, DirectX::WIC_FLAGS_NONE, wic_codec, filename.c_str());
 
 	if (FAILED(hr)) {
 		std::cout << "Could not save to \"" << filename.string() << "\"" << std::endl;
@@ -189,6 +185,33 @@ int gl_texture_to_png_file(GLuint texture_id, std::filesystem::path filename, bo
 		std::cout << "Texture successfully saved to " << filename.string() << std::endl;
 		return 0;
 	}
+}
+
+int gl_texture_to_png_file(GLuint texture_id, std::filesystem::path filename, boolean append_extension)
+{
+    if (append_extension) {
+		if (!(filename.string().ends_with(".png") || filename.string().ends_with(".PNG"))) {
+			filename = filename.concat(".png");
+		}
+	}
+
+	DirectX::Image image = gl_texture_to_dx_image(texture_id);
+	save_dx_image_to_file(image, DirectX::GetWICCodec(DirectX::WIC_CODEC_PNG), filename);
+	delete[] image.pixels;
+}
+
+int gl_texture_to_jpg_file(GLuint texture_id, std::filesystem::path filename, boolean append_extension)
+{
+	if (append_extension) {
+		if (!(filename.string().ends_with(".jpg") || filename.string().ends_with(".JPG") || 
+			filename.string().ends_with(".jpeg") || filename.string().ends_with(".JPEG"))) {
+			filename = filename.concat(".jpg");
+		}
+	}
+
+	DirectX::Image image = gl_texture_to_dx_image(texture_id);
+	save_dx_image_to_file(image, DirectX::GetWICCodec(DirectX::WIC_CODEC_JPEG), filename);
+	delete[] image.pixels;
 }
 
 Microsoft::WRL::ComPtr<ID3D11Device> get_d3d11_device() {
@@ -239,21 +262,9 @@ void gl_texture_to_dds_mipmaps(GLuint texture_id, std::filesystem::path filename
 	int width, height;
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
 	glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
-	if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while trying to get texture informations" << std::endl;
-	size_t pixel_count = width * height;
-	BYTE* image_buffer = (BYTE*)malloc(pixel_count*4);
-	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_buffer);
-	if (glGetError() != GL_NO_ERROR) std::cout << "GL ERROR while trying to get texture data" << std::endl;
-
 	if (mipmap_count == 1 && width >= 32 && height >= 32) mipmap_count = 4; // Generate mipmaps also if the original did not have them
 
-	DirectX::Image image{};
-	image.width = width;
-	image.height = height;
-	image.pixels = image_buffer;
-	image.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	image.rowPitch = image.width * 4;
-	image.slicePitch = pixel_count * 4;
+	DirectX::Image image = gl_texture_to_dx_image(texture_id);
 
 	std::unique_ptr<DirectX::ScratchImage> mipmaps(new (std::nothrow) DirectX::ScratchImage);
 	long hr; // Stores error codes of DirectX operations

@@ -15,12 +15,18 @@ public:
     std::filesystem::path extracted_maindata_path;
 
     bool disable_filenamefilters = false;
+    bool disable_texture_blacklist = false;
     bool atlas_mode = false;
     bool save_non_mod_textures = false;
+
+    bool flat_overwrites_steep = true;
 
     bool save_png = false;
     bool save_dds = true;
     bool save_renderings = false;
 
     bool no_prompt = false;
+
+    bool display_help_message = false;
+    bool display_licenses = false;
 };
