@@ -8,7 +8,7 @@ _How the result looks like ingame_
 
 
 ![](./documentation/example_debug_rendering.jpg)
-_The tool displays an isometric rendering of the file currently being processed._
+_The tool displays an isometric rendering like this of the file currently being processed._
 
 
 Be warned that the tool is not 100% reliable. It often generates incorrect or no snow and may even crash on some files.
@@ -19,9 +19,9 @@ _Note: All those arguments are optional. It is possible to place it in a folder 
 
 In contrast to the old SecondTry.exe program, the predecessor of this tool, the snowgenerator offers a lot of options.
 
-```-h```/```--help```/```--manual``` Display a help message
+```-h```/```--help```/```--manual``` - Display a help message
 
-```--licenses``` Display the licenses of open source libraries used by this project
+```--licenses``` - Display the licenses of open source libraries used by this project
 
 
 ```-o "C:/path/to/output/"```/```-out_path "C:/path/to/output/"```/```-output "C:/path/to/output/"``` - Specify a directory where the output should be stored. If none is specified, the tool will create a folder called "[Winter] Snow" in the directory where the tool is located and save the output there.
@@ -43,7 +43,9 @@ In contrast to the old SecondTry.exe program, the predecessor of this tool, the 
 
 
 ```--save_png``` - Save miplevel 0 of each of the generated snowed textures as a .png file.
+
 ```--no_dds``` - Do not export the generated textures to .dds files (Speeding up performance a lot).
+
 ```--only_png``` - Combination of the two. Save one .png file instead of the .dds mipmaps.
 
 
