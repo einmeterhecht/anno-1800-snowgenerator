@@ -1,5 +1,9 @@
 # Generate snow for buildings from Anno 1800
 
+_This project is not affiliated in any way with Ubisoft.
+
+Anno 1800 is a trademark of Ubisoft Entertainment in the US and/or other countries. Anno is a trademark of Ubisoft GmbH in the US and/or other countries._
+
 This is a command line tool you can use for generating snow on the roofs of buildings from the video game Anno 1800. It loads the original asset (.cfg file) as well as the .rdm meshes and .dds textures that are referenced in it. It then saves alternative versions of the textures where parts that are facing upward are covered with snow.
 
 
